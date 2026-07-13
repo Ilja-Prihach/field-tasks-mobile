@@ -4,6 +4,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { InfoRow } from '../components/InfoRow';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { ScrollableScreenHeader } from '../components/ScrollableScreenHeader';
 import { SectionCard } from '../components/SectionCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { RootStackParamList } from '../app/AppNavigator';
@@ -45,7 +46,8 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
 
   if (!task) {
     return (
-      <ScreenContainer scroll>
+      <ScreenContainer scroll edges={['top']} contentStyle={styles.screenContent}>
+        <ScrollableScreenHeader title={t('task_details')} onBack={() => navigation.goBack()} />
         <SectionCard>
           <Text style={{ color: colors.text }}>{t('task_not_found')}</Text>
         </SectionCard>
@@ -97,7 +99,8 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
   ];
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll edges={['top']} contentStyle={styles.screenContent}>
+      <ScrollableScreenHeader title={t('task_details')} onBack={() => navigation.goBack()} />
       <SectionCard>
         <Text style={[styles.title, { color: colors.text }]}>{task.title}</Text>
         <StatusBadge status={task.status} />
@@ -243,6 +246,11 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
 };
 
 const styles = StyleSheet.create({
+  screenContent: {
+    paddingTop: 10,
+    paddingBottom: 0,
+    gap: 12,
+  },
   title: {
     fontSize: 20,
     fontWeight: '700',

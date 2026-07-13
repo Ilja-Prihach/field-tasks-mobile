@@ -75,7 +75,6 @@ const TasksTabScreen = () => {
 };
 
 export const AppNavigator = () => {
-  const { t } = useTranslation();
   const theme = useTheme();
 
   return (
@@ -86,7 +85,7 @@ export const AppNavigator = () => {
         component={TaskFormScreen}
         options={{ headerShown: false }}
       />
-      <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ title: t('task_details') }} />
+      <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 };

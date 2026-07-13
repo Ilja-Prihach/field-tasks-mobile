@@ -13,6 +13,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { FormField } from '../components/FormField';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { ScrollableScreenHeader } from '../components/ScrollableScreenHeader';
 import { SectionCard } from '../components/SectionCard';
 import { RootStackParamList } from '../app/AppNavigator';
 import { TaskMap } from '../features/location/TaskMap';
@@ -328,21 +329,11 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   });
 
   return (
-    <ScreenContainer scroll contentStyle={styles.formContent}>
-      <View style={styles.formHeader}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t('back')}
-          onPress={() => navigation.goBack()}
-          style={[styles.backButton, { backgroundColor: colors.surface, borderColor: colors.border }]}
-        >
-          <Text style={[styles.backIcon, { color: colors.primary }]}>‹</Text>
-          <Text style={[styles.backText, { color: colors.text }]}>{t('back')}</Text>
-        </Pressable>
-        <Text style={[styles.formTitle, { color: colors.text }]}>
-          {task ? t('edit_task') : t('new_task')}
-        </Text>
-      </View>
+    <ScreenContainer scroll edges={['top']} contentStyle={styles.formContent}>
+      <ScrollableScreenHeader
+        title={task ? t('edit_task') : t('new_task')}
+        onBack={() => navigation.goBack()}
+      />
 
       <SectionCard title={t('main_info')}>
         <Controller
@@ -537,37 +528,8 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 const styles = StyleSheet.create({
   formContent: {
     paddingTop: 10,
-    paddingBottom: 28,
+    paddingBottom: 0,
     gap: 12,
-  },
-  formHeader: {
-    gap: 14,
-    paddingBottom: 2,
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    minHeight: 42,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 14,
-    paddingLeft: 10,
-    paddingRight: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  backIcon: {
-    fontSize: 28,
-    lineHeight: 28,
-    marginTop: -2,
-  },
-  backText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  formTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: -0.7,
   },
   inlineButtons: {
     flexDirection: 'row',
