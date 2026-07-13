@@ -22,11 +22,14 @@ export const HistoryScreen = () => {
   );
 
   return (
-    <ScreenContainer>
+    <ScreenContainer edges={['top']}>
       <FlatList
         data={visibleHistory}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <Text style={[styles.screenTitle, { color: colors.text }]}>{t('tab_history')}</Text>
+        }
         ListEmptyComponent={
           <View style={styles.emptyWrapper}>
             <EmptyState title={t('no_history_yet')} subtitle={t('history_will_appear')} />
@@ -55,7 +58,15 @@ export const HistoryScreen = () => {
 const styles = StyleSheet.create({
   listContent: {
     padding: 16,
+    paddingTop: 10,
+    paddingBottom: 28,
     gap: 12,
+  },
+  screenTitle: {
+    fontSize: 31,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+    marginBottom: 2,
   },
   emptyWrapper: {
     paddingTop: 16,

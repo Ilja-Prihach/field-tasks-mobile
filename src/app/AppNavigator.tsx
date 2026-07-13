@@ -63,12 +63,12 @@ const TasksTabScreen = () => {
     <Tab.Screen
       name="History"
       component={HistoryScreen}
-      options={{ tabBarLabel: t('tab_history'), title: t('tab_history'), headerStyle: { backgroundColor: theme.colors.background } }}
+      options={{ tabBarLabel: t('tab_history'), headerShown: false }}
     />
     <Tab.Screen
       name="Settings"
       component={SettingsScreen}
-      options={{ tabBarLabel: t('tab_settings'), title: t('tab_settings'), headerStyle: { backgroundColor: theme.colors.background } }}
+      options={{ tabBarLabel: t('tab_settings'), headerShown: false }}
     />
   </Tab.Navigator>
   );
@@ -84,9 +84,7 @@ export const AppNavigator = () => {
       <Stack.Screen
         name="TaskForm"
         component={TaskFormScreen}
-        options={({ route }) => ({
-          title: route.params?.taskId ? t('edit_task') : t('new_task'),
-        })}
+        options={{ headerShown: false }}
       />
       <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ title: t('task_details') }} />
     </Stack.Navigator>

@@ -30,7 +30,9 @@ export const SettingsScreen = () => {
   const setCurrentUser = useAppStore((state) => state.setCurrentUser);
 
   return (
-    <ScreenContainer scroll>
+    <ScreenContainer scroll edges={['top']} contentStyle={styles.screenContent}>
+      <Text style={[styles.screenTitle, { color: colors.text }]}>{t('tab_settings')}</Text>
+
       <SectionCard title={t('appearance')}>
         <View style={styles.row}>
           <Text style={{ color: colors.text }}>{t('dark_mode')}</Text>
@@ -126,6 +128,17 @@ export const SettingsScreen = () => {
 };
 
 const styles = StyleSheet.create({
+  screenContent: {
+    paddingTop: 10,
+    paddingBottom: 28,
+    gap: 12,
+  },
+  screenTitle: {
+    fontSize: 31,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+    marginBottom: 2,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
