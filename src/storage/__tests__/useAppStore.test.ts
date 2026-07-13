@@ -63,7 +63,7 @@ describe('useAppStore', () => {
     expect(state.history[0]).toMatchObject({
       taskId: task.id,
       actionType: 'status_changed',
-      description: 'Status changed to "completed".',
+      description: 'Status changed to "Completed".',
     });
   });
 

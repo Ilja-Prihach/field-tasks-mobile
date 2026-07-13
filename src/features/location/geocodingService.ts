@@ -1,3 +1,6 @@
+import { useAppStore } from '../../storage/useAppStore';
+import { translate } from '../../utils/translations';
+
 const GEOCODING_URL = 'https://nominatim.openstreetmap.org/search';
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -14,6 +17,7 @@ export type GeocodedLocation = {
 };
 
 export const geocodeAddress = async (address: string): Promise<GeocodedLocation | null> => {
+  const language = useAppStore.getState().settings.language;
   const query = address.trim();
   if (!query) {
     return null;
@@ -36,7 +40,7 @@ export const geocodeAddress = async (address: string): Promise<GeocodedLocation 
     );
 
     if (!response.ok) {
-      throw new Error(`Address service returned ${response.status}`);
+      throw new Error(translate(language, 'address_service_returned', { status: response.status }));
     }
 
     const results = (await response.json()) as NominatimResult[];
@@ -55,7 +59,7 @@ export const geocodeAddress = async (address: string): Promise<GeocodedLocation 
     };
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
-      throw new Error('Address search timed out. Check the connection and try again.');
+      throw new Error(translate(language, 'address_search_timeout'));
     }
     throw error;
   } finally {

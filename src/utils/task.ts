@@ -1,4 +1,10 @@
-import { SortDirection, SortMode, SyncStatus, Task, TaskStatus } from '../types/task';
+import { HistoryActionType, LanguageCode, SortDirection, SortMode, SyncStatus, Task, TaskStatus } from '../types/task';
+import {
+  getHistoryActionTranslationKey,
+  getStatusTranslationKey,
+  getSyncStatusTranslationKey,
+  translate,
+} from './translations';
 
 const statusOrder: Record<TaskStatus, number> = {
   new: 0,
@@ -42,26 +48,11 @@ export const getTaskShortLocation = (address: string) => {
   return `${address.slice(0, 33)}...`;
 };
 
-export const getStatusLabel = (status: TaskStatus) => {
-  switch (status) {
-    case 'new':
-      return 'New';
-    case 'in_progress':
-      return 'In Progress';
-    case 'completed':
-      return 'Completed';
-    case 'cancelled':
-      return 'Cancelled';
-  }
-};
+export const getStatusLabel = (status: TaskStatus, language: LanguageCode) =>
+  translate(language, getStatusTranslationKey(status));
 
-export const getSyncStatusLabel = (status: SyncStatus) => {
-  switch (status) {
-    case 'pending':
-      return 'Waiting for sync';
-    case 'failed':
-      return 'Sync failed';
-    case 'synced':
-      return 'Synced';
-  }
-};
+export const getSyncStatusLabel = (status: SyncStatus, language: LanguageCode) =>
+  translate(language, getSyncStatusTranslationKey(status));
+
+export const getHistoryActionLabel = (actionType: HistoryActionType, language: LanguageCode) =>
+  translate(language, getHistoryActionTranslationKey(actionType));

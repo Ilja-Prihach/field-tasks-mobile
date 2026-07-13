@@ -1,0 +1,440 @@
+import { HistoryActionType, LanguageCode, ServerStatus, SyncStatus, TaskStatus } from '../types/task';
+
+const translations = {
+  en: {
+    tab_tasks: 'Tasks',
+    tab_map: 'Map',
+    tab_history: 'History',
+    tab_settings: 'Settings',
+    add_task: 'Add task',
+    new_task: 'New Task',
+    edit_task: 'Edit Task',
+    task_details: 'Task Details',
+    appearance: 'Appearance',
+    dark_mode: 'Dark mode',
+    language: 'Language',
+    english: 'English',
+    russian: 'Russian',
+    notifications: 'Notifications',
+    demo_mode_45: 'Demo mode (45 sec reminder)',
+    notifications_fallback_help:
+      'If a deadline is too close, the app uses a fallback reminder instead of skipping the notification.',
+    sync: 'Sync',
+    server: 'Server',
+    network: 'Network',
+    network_available: 'available',
+    network_offline: 'offline',
+    mock_server: 'Mock server',
+    sync_state: 'Sync',
+    sync_in_progress: 'in progress',
+    sync_idle: 'idle',
+    pending_changes: 'Pending changes',
+    last_successful_sync: 'Last successful sync',
+    run_sync_now: 'Run sync now',
+    syncing: 'Syncing...',
+    sync_status: 'Sync status',
+    nothing_waiting_for_sync: 'Nothing is waiting for sync right now.',
+    no_internet_connection: 'No internet connection.',
+    sync_completed: 'Sync completed',
+    tasks_synced_successfully: '{count} task(s) synced successfully.',
+    sync_finished_with_issues: 'Sync finished with issues',
+    sync_summary_with_failures: '{synced} synced, {failed} failed. Check History for details.',
+    sync_failed_title: 'Sync failed',
+    unexpected_error: 'Unexpected error',
+    about: 'About',
+    about_description: 'Offline-first Android-oriented Expo app for task planning, reminders and mock sync.',
+    field_tasks_mvp: 'Field Tasks MVP',
+    candidate_code: 'Candidate code',
+    filter_all: 'All',
+    filter_new: 'New',
+    filter_in_progress: 'In progress',
+    filter_completed: 'Completed',
+    filter_cancelled: 'Cancelled',
+    sort_added: 'Added',
+    sort_deadline: 'Deadline',
+    sort_status: 'Status',
+    direction_oldest_first: 'Oldest first',
+    direction_newest_first: 'Newest first',
+    direction_due_soon: 'Due soon',
+    direction_due_later: 'Due later',
+    direction_new_first: 'New first',
+    direction_cancelled_first: 'Cancelled first',
+    field_overview: 'FIELD OVERVIEW',
+    active_tasks: '{count} active task{suffix}',
+    active_tasks_suffix_one: '',
+    active_tasks_suffix_many: 's',
+    hero_subtitle: '{inProgress} in progress · {completed} completed',
+    filter_by_status: 'Filter by status',
+    shown_count: '{count} shown',
+    sort: 'Sort',
+    no_tasks_yet: 'No tasks yet',
+    create_first_task: 'Create the first field task from the button above.',
+    no_filtered_tasks: 'No {status} tasks',
+    choose_another_status_filter: 'Choose another status filter.',
+    deadline: 'DEADLINE',
+    location: 'LOCATION',
+    waiting_for_sync: 'Waiting for sync',
+    sync_failed_short: 'Sync failed',
+    synced: 'Synced',
+    no_map_markers: 'No map markers',
+    create_tasks_with_coordinates: 'Create tasks with coordinates to see them on the map.',
+    tap_marker_hint: 'Tap a marker to open task details.',
+    no_history_yet: 'No history yet',
+    history_will_appear: 'Task and sync actions will appear here.',
+    task_label: 'Task',
+    task_not_found: 'Task not found. It may have been deleted.',
+    description: 'Description',
+    due: 'Due',
+    address: 'Address',
+    actions: 'Actions',
+    edit_task_button: 'Edit task',
+    in_progress: 'In Progress',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    delete: 'Delete',
+    attachments: 'Attachments',
+    no_attachments: 'No attachments.',
+    preview_unavailable: 'Preview unavailable',
+    task_history: 'Task history',
+    no_history_entries: 'No history entries yet.',
+    reminder_adjusted: 'Reminder adjusted',
+    notification_error: 'Notification error',
+    delete_task: 'Delete task',
+    delete_task_confirmation: 'This action keeps the history entry but removes the task from the list.',
+    cancel: 'Cancel',
+    main_info: 'Main info',
+    title: 'Title',
+    title_required: 'Title is required',
+    title_placeholder: 'Replace filter on Site A',
+    description_required: 'Description is required',
+    description_placeholder: 'Describe what needs to be done',
+    date_required: 'Date is required',
+    time_required: 'Time is required',
+    location_required: 'Location is required',
+    latitude_required: 'Latitude is required',
+    latitude_range: 'Latitude must be between -90 and 90',
+    longitude_required: 'Longitude is required',
+    longitude_range: 'Longitude must be between -180 and 180',
+    done: 'Done',
+    search_any_city: 'Search any city or street in Russian or English.',
+    city_or_full_address: 'City or full address',
+    search_on_map: 'Search on map',
+    searching_address: 'Searching address...',
+    quick_locations: 'QUICK LOCATIONS',
+    location_found: 'Location found',
+    status: 'Status',
+    pick_images: 'Pick images',
+    save_changes: 'Save changes',
+    create_task: 'Create task',
+    permission_required: 'Permission required',
+    allow_gallery_access: 'Please allow gallery access to attach images.',
+    image_picker_failed: 'Image picker failed',
+    unable_to_select_images: 'Unable to select images.',
+    enter_city_or_address_first: 'Enter a city or full address first.',
+    address_not_found: 'Address not found. Check the spelling or add more details.',
+    address_search_unavailable: 'Address search is unavailable. Try a quick location.',
+    search_address_or_quick_location: 'Search this address on the map or choose a quick location.',
+    deadline_must_be_future: 'Deadline must be in the future',
+    save_failed: 'Save failed',
+    task_could_not_be_saved: 'Task could not be saved.',
+    notifications_disabled: 'Notifications disabled',
+    reminder_permission_not_granted: 'Task will be saved, but reminder permission was not granted.',
+    task_saved_without_reminder: 'Task saved without reminder',
+    notification_could_not_be_scheduled: 'Notification could not be scheduled.',
+    notification_channel_name: 'Task reminders',
+    notification_demo_warning: 'Demo mode is enabled. Notification was scheduled in 45 seconds.',
+    notification_fallback_warning: 'Due time is too close. Notification was scheduled in 60 seconds instead.',
+    upcoming_task: 'Upcoming task',
+    at_time: 'at',
+    address_service_returned: 'Address service returned {status}',
+    address_search_timeout: 'Address search timed out. Check the connection and try again.',
+    api_cannot_reach: 'Cannot reach {url}. Start json-server and check the API URL. {reason}',
+    api_expected_json: 'Expected JSON from {url}, got "{contentType}". Check json-server URL.',
+    api_invalid_json: 'Invalid JSON from {url}. Check json-server response.',
+    api_method_failed: '{method} {path} failed with status {status}',
+    unexpected_sync_error: 'Unexpected sync error.',
+    local_sync_payload_missing: 'Local sync payload is missing for task {taskId}.',
+    sync_started_for_task: 'Sync started for task {taskId}.',
+    task_synced_successfully: 'Task {taskId} synced successfully.',
+    status_new: 'New',
+    status_in_progress: 'In Progress',
+    status_completed: 'Completed',
+    status_cancelled: 'Cancelled',
+    history_created: 'created',
+    history_updated: 'updated',
+    history_status_changed: 'status changed',
+    history_attachment_added: 'attachment added',
+    history_deleted: 'deleted',
+    history_sync_started: 'sync started',
+    history_synced: 'synced',
+    history_sync_failed: 'sync failed',
+    history_task_created: 'Task "{title}" was created.',
+    history_task_updated: 'Task "{title}" was updated.',
+    history_status_to: 'Status changed to "{status}".',
+    history_attachments_added: '{count} attachment(s) added.',
+    history_task_deleted: 'Task "{title}" was deleted.',
+    server_status_unknown: 'unknown',
+    server_status_reachable: 'reachable',
+    server_status_unreachable: 'unreachable',
+  },
+  ru: {
+    tab_tasks: 'Задачи',
+    tab_map: 'Карта',
+    tab_history: 'История',
+    tab_settings: 'Настройки',
+    add_task: 'Добавить',
+    new_task: 'Новая задача',
+    edit_task: 'Редактирование',
+    task_details: 'Детали задачи',
+    appearance: 'Оформление',
+    dark_mode: 'Темная тема',
+    language: 'Язык',
+    english: 'English',
+    russian: 'Русский',
+    notifications: 'Уведомления',
+    demo_mode_45: 'Демо-режим (напоминание через 45 сек)',
+    notifications_fallback_help:
+      'Если дедлайн слишком близко, приложение ставит запасное напоминание вместо пропуска уведомления.',
+    sync: 'Синхронизация',
+    server: 'Сервер',
+    network: 'Сеть',
+    network_available: 'доступна',
+    network_offline: 'офлайн',
+    mock_server: 'Mock server',
+    sync_state: 'Синк',
+    sync_in_progress: 'в процессе',
+    sync_idle: 'ожидание',
+    pending_changes: 'Изменений в очереди',
+    last_successful_sync: 'Последняя успешная синхронизация',
+    run_sync_now: 'Запустить синк',
+    syncing: 'Синхронизация...',
+    sync_status: 'Статус синка',
+    nothing_waiting_for_sync: 'Сейчас нет изменений, ожидающих синхронизации.',
+    no_internet_connection: 'Нет подключения к интернету.',
+    sync_completed: 'Синхронизация завершена',
+    tasks_synced_successfully: 'Успешно синхронизировано задач: {count}.',
+    sync_finished_with_issues: 'Синхронизация завершилась с ошибками',
+    sync_summary_with_failures: 'Успешно: {synced}, с ошибками: {failed}. Подробности смотри в Истории.',
+    sync_failed_title: 'Синхронизация не удалась',
+    unexpected_error: 'Непредвиденная ошибка',
+    about: 'О приложении',
+    about_description: 'Offline-first Expo приложение с упором на Android для задач, напоминаний и mock sync.',
+    field_tasks_mvp: 'Field Tasks MVP',
+    candidate_code: 'Код кандидата',
+    filter_all: 'Все',
+    filter_new: 'Новые',
+    filter_in_progress: 'В работе',
+    filter_completed: 'Завершенные',
+    filter_cancelled: 'Отмененные',
+    sort_added: 'Добавление',
+    sort_deadline: 'Дедлайн',
+    sort_status: 'Статус',
+    direction_oldest_first: 'Старые сверху',
+    direction_newest_first: 'Новые сверху',
+    direction_due_soon: 'Скоро дедлайн',
+    direction_due_later: 'Позже дедлайн',
+    direction_new_first: 'Новые сверху',
+    direction_cancelled_first: 'Отмененные сверху',
+    field_overview: 'ОБЗОР ЗАДАЧ',
+    active_tasks: 'Активных задач: {count}',
+    active_tasks_suffix_one: '',
+    active_tasks_suffix_many: '',
+    hero_subtitle: 'В работе: {inProgress} · завершено: {completed}',
+    filter_by_status: 'Фильтр по статусу',
+    shown_count: 'Показано: {count}',
+    sort: 'Сортировка',
+    no_tasks_yet: 'Задач пока нет',
+    create_first_task: 'Создай первую задачу кнопкой сверху.',
+    no_filtered_tasks: 'Нет задач со статусом "{status}"',
+    choose_another_status_filter: 'Выбери другой статус в фильтре.',
+    deadline: 'ДЕДЛАЙН',
+    location: 'ЛОКАЦИЯ',
+    waiting_for_sync: 'Ожидает синк',
+    sync_failed_short: 'Синк не удался',
+    synced: 'Синхронизировано',
+    no_map_markers: 'Нет маркеров на карте',
+    create_tasks_with_coordinates: 'Создай задачи с координатами, чтобы увидеть их на карте.',
+    tap_marker_hint: 'Нажми на маркер, чтобы открыть детали задачи.',
+    no_history_yet: 'История пуста',
+    history_will_appear: 'Здесь будут появляться действия по задачам и синхронизации.',
+    task_label: 'Задача',
+    task_not_found: 'Задача не найдена. Возможно, она была удалена.',
+    description: 'Описание',
+    due: 'Срок',
+    address: 'Адрес',
+    actions: 'Действия',
+    edit_task_button: 'Редактировать',
+    in_progress: 'В работе',
+    completed: 'Завершить',
+    cancelled: 'Отменить',
+    delete: 'Удалить',
+    attachments: 'Вложения',
+    no_attachments: 'Вложений нет.',
+    preview_unavailable: 'Превью недоступно',
+    task_history: 'История задачи',
+    no_history_entries: 'Записей в истории пока нет.',
+    reminder_adjusted: 'Напоминание изменено',
+    notification_error: 'Ошибка уведомления',
+    delete_task: 'Удалить задачу',
+    delete_task_confirmation: 'История останется, но задача будет удалена из списка.',
+    cancel: 'Отмена',
+    main_info: 'Основная информация',
+    title: 'Название',
+    title_required: 'Название обязательно',
+    title_placeholder: 'Заменить фильтр на объекте A',
+    description_required: 'Описание обязательно',
+    description_placeholder: 'Опиши, что нужно сделать',
+    date_required: 'Дата обязательна',
+    time_required: 'Время обязательно',
+    location_required: 'Локация обязательна',
+    latitude_required: 'Широта обязательна',
+    latitude_range: 'Широта должна быть от -90 до 90',
+    longitude_required: 'Долгота обязательна',
+    longitude_range: 'Долгота должна быть от -180 до 180',
+    done: 'Готово',
+    search_any_city: 'Ищи любой город или улицу на русском или английском.',
+    city_or_full_address: 'Город или полный адрес',
+    search_on_map: 'Найти на карте',
+    searching_address: 'Ищем адрес...',
+    quick_locations: 'БЫСТРЫЕ ЛОКАЦИИ',
+    location_found: 'Локация найдена',
+    status: 'Статус',
+    pick_images: 'Выбрать изображения',
+    save_changes: 'Сохранить изменения',
+    create_task: 'Создать задачу',
+    permission_required: 'Нужно разрешение',
+    allow_gallery_access: 'Разреши доступ к галерее, чтобы прикреплять изображения.',
+    image_picker_failed: 'Ошибка выбора изображения',
+    unable_to_select_images: 'Не удалось выбрать изображения.',
+    enter_city_or_address_first: 'Сначала введи город или полный адрес.',
+    address_not_found: 'Адрес не найден. Проверь написание или добавь деталей.',
+    address_search_unavailable: 'Поиск адреса недоступен. Попробуй быстрый выбор локации.',
+    search_address_or_quick_location: 'Найди адрес на карте или выбери быструю локацию.',
+    deadline_must_be_future: 'Дедлайн должен быть в будущем',
+    save_failed: 'Не удалось сохранить',
+    task_could_not_be_saved: 'Не удалось сохранить задачу.',
+    notifications_disabled: 'Уведомления отключены',
+    reminder_permission_not_granted: 'Задача сохранена, но разрешение на напоминания не выдано.',
+    task_saved_without_reminder: 'Задача сохранена без напоминания',
+    notification_could_not_be_scheduled: 'Не удалось запланировать уведомление.',
+    notification_channel_name: 'Напоминания о задачах',
+    notification_demo_warning: 'Включен демо-режим. Уведомление поставлено через 45 секунд.',
+    notification_fallback_warning: 'До дедлайна слишком мало времени. Уведомление поставлено через 60 секунд.',
+    upcoming_task: 'Скоро задача',
+    at_time: 'в',
+    address_service_returned: 'Сервис адресов вернул {status}',
+    address_search_timeout: 'Время поиска адреса истекло. Проверь соединение и попробуй еще раз.',
+    api_cannot_reach: 'Не удается подключиться к {url}. Запусти json-server и проверь API URL. {reason}',
+    api_expected_json: 'Ожидался JSON от {url}, получен "{contentType}". Проверь URL json-server.',
+    api_invalid_json: 'Некорректный JSON от {url}. Проверь ответ json-server.',
+    api_method_failed: '{method} {path} завершился со статусом {status}',
+    unexpected_sync_error: 'Непредвиденная ошибка синхронизации.',
+    local_sync_payload_missing: 'Для задачи {taskId} отсутствует локальный payload для синка.',
+    sync_started_for_task: 'Запущена синхронизация задачи {taskId}.',
+    task_synced_successfully: 'Задача {taskId} успешно синхронизирована.',
+    status_new: 'Новая',
+    status_in_progress: 'В работе',
+    status_completed: 'Завершена',
+    status_cancelled: 'Отменена',
+    history_created: 'создание',
+    history_updated: 'обновление',
+    history_status_changed: 'смена статуса',
+    history_attachment_added: 'добавление вложения',
+    history_deleted: 'удаление',
+    history_sync_started: 'старт синка',
+    history_synced: 'синхронизировано',
+    history_sync_failed: 'ошибка синка',
+    history_task_created: 'Задача "{title}" создана.',
+    history_task_updated: 'Задача "{title}" обновлена.',
+    history_status_to: 'Статус изменен на "{status}".',
+    history_attachments_added: 'Добавлено вложений: {count}.',
+    history_task_deleted: 'Задача "{title}" удалена.',
+    server_status_unknown: 'неизвестно',
+    server_status_reachable: 'доступен',
+    server_status_unreachable: 'недоступен',
+  },
+} as const;
+
+export type TranslationKey = keyof typeof translations.en & string;
+
+export const getDefaultLanguage = (): LanguageCode => {
+  const locale = Intl.DateTimeFormat().resolvedOptions().locale.toLowerCase();
+  return locale.startsWith('ru') ? 'ru' : 'en';
+};
+
+export const translate = (
+  language: LanguageCode,
+  key: TranslationKey,
+  params?: Record<string, string | number>,
+) : string => {
+  const localized = (translations[language] ?? translations.en) as Record<TranslationKey, string>;
+  const fallback = translations.en as Record<TranslationKey, string>;
+  let message = localized[key] ?? fallback[key];
+
+  if (!params) {
+    return message;
+  }
+
+  for (const [paramKey, value] of Object.entries(params)) {
+    message = message.replaceAll(`{${paramKey}}`, String(value));
+  }
+
+  return message;
+};
+
+export const getStatusTranslationKey = (status: TaskStatus): TranslationKey => {
+  switch (status) {
+    case 'new':
+      return 'status_new';
+    case 'in_progress':
+      return 'status_in_progress';
+    case 'completed':
+      return 'status_completed';
+    case 'cancelled':
+      return 'status_cancelled';
+  }
+};
+
+export const getSyncStatusTranslationKey = (status: SyncStatus): TranslationKey => {
+  switch (status) {
+    case 'pending':
+      return 'waiting_for_sync';
+    case 'failed':
+      return 'sync_failed_short';
+    case 'synced':
+      return 'synced';
+  }
+};
+
+export const getHistoryActionTranslationKey = (actionType: HistoryActionType): TranslationKey => {
+  switch (actionType) {
+    case 'created':
+      return 'history_created';
+    case 'updated':
+      return 'history_updated';
+    case 'status_changed':
+      return 'history_status_changed';
+    case 'attachment_added':
+      return 'history_attachment_added';
+    case 'deleted':
+      return 'history_deleted';
+    case 'sync_started':
+      return 'history_sync_started';
+    case 'synced':
+      return 'history_synced';
+    case 'sync_failed':
+      return 'history_sync_failed';
+  }
+};
+
+export const getServerStatusTranslationKey = (status: ServerStatus): TranslationKey => {
+  switch (status) {
+    case 'reachable':
+      return 'server_status_reachable';
+    case 'unreachable':
+      return 'server_status_unreachable';
+    case 'unknown':
+    default:
+      return 'server_status_unknown';
+  }
+};

@@ -23,6 +23,7 @@ import { LOCATION_PRESETS } from '../features/location/presets';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { Task, TaskAttachment, TaskStatus } from '../types/task';
+import { useTranslation } from '../utils/useTranslation';
 import {
   formatDateOnly,
   formatDateOnlyFromDate,
@@ -32,32 +33,16 @@ import {
 import { createId } from '../utils/id';
 import { getStatusLabel } from '../utils/task';
 
-const formSchema = z.object({
-  title: z.string().trim().min(1, 'Title is required'),
-  description: z.string().trim().min(1, 'Description is required'),
-  dueDate: z.string().min(1, 'Date is required'),
-  dueTime: z.string().min(1, 'Time is required'),
-  address: z.string().trim().min(1, 'Location is required'),
-  latitude: z
-    .string()
-    .trim()
-    .min(1, 'Latitude is required')
-    .refine((value) => {
-      const number = Number(value);
-      return !Number.isNaN(number) && number >= -90 && number <= 90;
-    }, 'Latitude must be between -90 and 90'),
-  longitude: z
-    .string()
-    .trim()
-    .min(1, 'Longitude is required')
-    .refine((value) => {
-      const number = Number(value);
-      return !Number.isNaN(number) && number >= -180 && number <= 180;
-    }, 'Longitude must be between -180 and 180'),
-  status: z.enum(['new', 'in_progress', 'completed', 'cancelled']),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = {
+  title: string;
+  description: string;
+  dueDate: string;
+  dueTime: string;
+  address: string;
+  latitude: string;
+  longitude: string;
+  status: TaskStatus;
+};
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskForm'>;
 
@@ -81,6 +66,7 @@ const parseFormDateTime = (dueDate: string, dueTime: string, fallback: Date) => 
 
 export const TaskFormScreen = ({ navigation, route }: Props) => {
   const colors = useThemeColors();
+  const { language, t } = useTranslation();
   const taskId = route.params?.taskId;
   const tasks = useAppStore((state) => state.tasks);
   const createTask = useAppStore((state) => state.createTask);
@@ -124,7 +110,32 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     watch,
   } = useForm<FormValues>({
     defaultValues,
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(
+      z.object({
+        title: z.string().trim().min(1, t('title_required')),
+        description: z.string().trim().min(1, t('description_required')),
+        dueDate: z.string().min(1, t('date_required')),
+        dueTime: z.string().min(1, t('time_required')),
+        address: z.string().trim().min(1, t('location_required')),
+        latitude: z
+          .string()
+          .trim()
+          .min(1, t('latitude_required'))
+          .refine((value) => {
+            const number = Number(value);
+            return !Number.isNaN(number) && number >= -90 && number <= 90;
+          }, t('latitude_range')),
+        longitude: z
+          .string()
+          .trim()
+          .min(1, t('longitude_required'))
+          .refine((value) => {
+            const number = Number(value);
+            return !Number.isNaN(number) && number >= -180 && number <= 180;
+          }, t('longitude_range')),
+        status: z.enum(['new', 'in_progress', 'completed', 'cancelled']),
+      }),
+    ),
   });
 
   const watchedDate = watch('dueDate');
@@ -136,7 +147,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const locationPreviewTask: Task | null = isLocationResolved
     ? {
         id: 'location-preview',
-        title: watchedAddress.trim() || 'Task location',
+        title: watchedAddress.trim() || t('location'),
         description: '',
         dueDate: defaultDueDate.toISOString(),
         status: 'new',
@@ -178,7 +189,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     try {
       const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert('Permission required', 'Please allow gallery access to attach images.');
+        Alert.alert(t('permission_required'), t('allow_gallery_access'));
         return;
       }
 
@@ -203,14 +214,14 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
       setAttachments((prev) => [...prev, ...nextAttachments]);
     } catch (error) {
-      Alert.alert('Image picker failed', error instanceof Error ? error.message : 'Unable to select images.');
+      Alert.alert(t('image_picker_failed'), error instanceof Error ? error.message : t('unable_to_select_images'));
     }
   };
 
   const handleLocationSearch = async () => {
     const address = watchedAddress.trim();
     if (!address) {
-      setError('address', { message: 'Enter a city or full address first.' });
+      setError('address', { message: t('enter_city_or_address_first') });
       return;
     }
 
@@ -220,7 +231,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       const result = await geocodeAddress(address);
       if (!result) {
         setIsLocationResolved(false);
-        setError('address', { message: 'Address not found. Check the spelling or add more details.' });
+        setError('address', { message: t('address_not_found') });
         return;
       }
 
@@ -231,7 +242,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     } catch (error) {
       setIsLocationResolved(false);
       setError('address', {
-        message: error instanceof Error ? error.message : 'Address search is unavailable. Try a quick location.',
+        message: error instanceof Error ? error.message : t('address_search_unavailable'),
       });
     } finally {
       setIsSearchingLocation(false);
@@ -240,13 +251,13 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const onSubmit = handleSubmit(async (values) => {
     if (!isLocationResolved) {
-      setError('address', { message: 'Search this address on the map or choose a quick location.' });
+      setError('address', { message: t('search_address_or_quick_location') });
       return;
     }
 
     const dueDate = buildDueDate(values);
     if (new Date(dueDate).getTime() <= Date.now()) {
-      setError('dueDate', { message: 'Deadline must be in the future' });
+      setError('dueDate', { message: t('deadline_must_be_future') });
       return;
     }
 
@@ -265,28 +276,28 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
     const savedTask = task ? editTask(task.id, payload) : createTask(payload);
     if (!savedTask) {
-      Alert.alert('Save failed', 'Task could not be saved.');
+      Alert.alert(t('save_failed'), t('task_could_not_be_saved'));
       return;
     }
 
     try {
       const permission = await requestNotificationPermission();
       if (!permission.granted) {
-        Alert.alert('Notifications disabled', 'Task will be saved, but reminder permission was not granted.');
+        Alert.alert(t('notifications_disabled'), t('reminder_permission_not_granted'));
       } else {
         await cancelTaskNotification(task?.notificationId);
         setTaskNotification(savedTask.id, null);
         const result = await scheduleTaskNotification(savedTask, notificationDemoMode);
         setTaskNotification(savedTask.id, result?.notificationId ?? null);
         if (result?.warning) {
-          Alert.alert('Reminder adjusted', result.warning);
+          Alert.alert(t('reminder_adjusted'), result.warning);
         }
       }
 
     } catch (error) {
       Alert.alert(
-        'Task saved without reminder',
-        error instanceof Error ? error.message : 'Notification could not be scheduled.',
+        t('task_saved_without_reminder'),
+        error instanceof Error ? error.message : t('notification_could_not_be_scheduled'),
       );
     }
 
@@ -295,17 +306,17 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   return (
     <ScreenContainer scroll>
-      <SectionCard title="Main info">
+      <SectionCard title={t('main_info')}>
         <Controller
           control={control}
           name="title"
           render={({ field: { onChange, value } }) => (
             <FormField
-              label="Title"
+              label={t('title')}
               value={value}
               onChangeText={onChange}
               error={errors.title?.message}
-              placeholder="Replace filter on Site A"
+              placeholder={t('title_placeholder')}
             />
           )}
         />
@@ -314,18 +325,18 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           name="description"
           render={({ field: { onChange, value } }) => (
             <FormField
-              label="Description"
+              label={t('description')}
               value={value}
               onChangeText={onChange}
               error={errors.description?.message}
               multiline
-              placeholder="Describe what needs to be done"
+              placeholder={t('description_placeholder')}
             />
           )}
         />
       </SectionCard>
 
-      <SectionCard title="Deadline">
+      <SectionCard title={t('sort_deadline')}>
         <View style={styles.inlineButtons}>
           <PrimaryButton label={watchedDate} onPress={() => setPickerMode('date')} variant="secondary" />
           <PrimaryButton label={watchedTime} onPress={() => setPickerMode('time')} variant="secondary" />
@@ -346,20 +357,20 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
               onDismiss={() => setPickerMode(null)}
             />
             {Platform.OS === 'ios' ? (
-              <PrimaryButton label="Done" onPress={() => setPickerMode(null)} variant="secondary" />
+              <PrimaryButton label={t('done')} onPress={() => setPickerMode(null)} variant="secondary" />
             ) : null}
           </View>
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Location">
-        <Text style={[styles.locationIntro, { color: colors.textMuted }]}>Search any city or street in Russian or English.</Text>
+      <SectionCard title={t('location')}>
+        <Text style={[styles.locationIntro, { color: colors.textMuted }]}>{t('search_any_city')}</Text>
         <Controller
           control={control}
           name="address"
           render={({ field: { onChange, value } }) => (
             <FormField
-              label="Address"
+              label={t('address')}
               value={value}
               onChangeText={(nextAddress) => {
                 onChange(nextAddress);
@@ -367,17 +378,17 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                 setResolvedLocationName('');
               }}
               error={errors.address?.message}
-              placeholder="City or full address"
+              placeholder={t('city_or_full_address')}
             />
           )}
         />
         <PrimaryButton
-          label={isSearchingLocation ? 'Searching address...' : 'Search on map'}
+          label={isSearchingLocation ? t('searching_address') : t('search_on_map')}
           onPress={() => void handleLocationSearch()}
           disabled={isSearchingLocation}
         />
         <View style={styles.quickLocationBlock}>
-          <Text style={[styles.quickLocationLabel, { color: colors.textMuted }]}>QUICK LOCATIONS</Text>
+          <Text style={[styles.quickLocationLabel, { color: colors.textMuted }]}>{t('quick_locations')}</Text>
           <View style={styles.quickLocationRow}>
             {LOCATION_PRESETS.map((preset) => (
               <Pressable
@@ -402,7 +413,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           <View style={[styles.locationResult, { backgroundColor: `${colors.success}16` }]}>
             <View style={[styles.locationResultDot, { backgroundColor: colors.success }]} />
             <View style={styles.locationResultText}>
-              <Text style={[styles.locationResultTitle, { color: colors.success }]}>Location found</Text>
+              <Text style={[styles.locationResultTitle, { color: colors.success }]}>{t('location_found')}</Text>
               <Text style={{ color: colors.textMuted }} numberOfLines={2}>{resolvedLocationName}</Text>
             </View>
           </View>
@@ -417,7 +428,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         ) : null}
       </SectionCard>
 
-      <SectionCard title="Status">
+      <SectionCard title={t('status')}>
         <Controller
           control={control}
           name="status"
@@ -435,7 +446,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                   ]}
                 >
                   <Text style={[styles.statusText, { color: value === status ? '#fff' : colors.text }]}>
-                    {getStatusLabel(status)}
+                    {getStatusLabel(status, language)}
                   </Text>
                 </Pressable>
               ))}
@@ -444,8 +455,8 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         />
       </SectionCard>
 
-      <SectionCard title="Attachments">
-        <PrimaryButton label="Pick images" onPress={handlePickImages} variant="secondary" />
+      <SectionCard title={t('attachments')}>
+        <PrimaryButton label={t('pick_images')} onPress={handlePickImages} variant="secondary" />
         <View style={styles.attachmentsGrid}>
           {attachments.map((attachment) => (
             <View key={attachment.id} style={styles.attachmentItem}>
@@ -458,7 +469,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         </View>
       </SectionCard>
 
-      <PrimaryButton label={task ? 'Save changes' : 'Create task'} onPress={onSubmit} disabled={isSubmitting} />
+      <PrimaryButton label={task ? t('save_changes') : t('create_task')} onPress={onSubmit} disabled={isSubmitting} />
     </ScreenContainer>
   );
 };

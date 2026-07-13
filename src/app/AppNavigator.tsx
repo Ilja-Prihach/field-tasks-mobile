@@ -9,6 +9,7 @@ import { SettingsScreen } from '../screens/SettingsScreen';
 import { TaskDetailsScreen } from '../screens/TaskDetailsScreen';
 import { TaskFormScreen } from '../screens/TaskFormScreen';
 import { TaskListScreen } from '../screens/TaskListScreen';
+import { useTranslation } from '../utils/useTranslation';
 
 export type RootStackParamList = {
   Tabs: undefined;
@@ -29,21 +30,25 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const HeaderAddButton = () => {
   const navigation = useNavigation();
   const theme = useTheme();
+  const { t } = useTranslation();
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel="Add task"
+      accessibilityLabel={t('add_task')}
       onPress={() => navigation.navigate('TaskForm' as never)}
       style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.primary, opacity: pressed ? 0.8 : 1 }]}
     >
-      <Text style={styles.addButtonText}>Add task</Text>
+      <Text style={styles.addButtonText}>{t('add_task')}</Text>
     </Pressable>
   );
 };
 
-const TasksTabScreen = () => (
-  <Tab.Navigator
+const TasksTabScreen = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Tab.Navigator
     screenOptions={({ route }) => ({
       headerTitleAlign: 'left',
       headerShadowVisible: false,
@@ -62,29 +67,43 @@ const TasksTabScreen = () => (
       name="Tasks"
       component={TaskListScreen}
       options={{
-        tabBarLabel: 'Tasks',
+        tabBarLabel: t('tab_tasks'),
+        title: t('tab_tasks'),
         headerRight: () => <HeaderAddButton />,
       }}
     />
-    <Tab.Screen name="Map" component={MapScreen} />
-    <Tab.Screen name="History" component={HistoryScreen} />
-    <Tab.Screen name="Settings" component={SettingsScreen} />
-  </Tab.Navigator>
-);
-
-export const AppNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerTitleAlign: 'left', headerShadowVisible: false, headerTitleStyle: styles.headerTitle }}>
-    <Stack.Screen name="Tabs" component={TasksTabScreen} options={{ headerShown: false }} />
-    <Stack.Screen
-      name="TaskForm"
-      component={TaskFormScreen}
-      options={({ route }) => ({
-        title: route.params?.taskId ? 'Edit Task' : 'New Task',
-      })}
+    <Tab.Screen name="Map" component={MapScreen} options={{ tabBarLabel: t('tab_map'), title: t('tab_map') }} />
+    <Tab.Screen
+      name="History"
+      component={HistoryScreen}
+      options={{ tabBarLabel: t('tab_history'), title: t('tab_history') }}
     />
-    <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ title: 'Task Details' }} />
-  </Stack.Navigator>
-);
+    <Tab.Screen
+      name="Settings"
+      component={SettingsScreen}
+      options={{ tabBarLabel: t('tab_settings'), title: t('tab_settings') }}
+    />
+  </Tab.Navigator>
+  );
+};
+
+export const AppNavigator = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Stack.Navigator screenOptions={{ headerTitleAlign: 'left', headerShadowVisible: false, headerTitleStyle: styles.headerTitle }}>
+      <Stack.Screen name="Tabs" component={TasksTabScreen} options={{ headerShown: false }} />
+      <Stack.Screen
+        name="TaskForm"
+        component={TaskFormScreen}
+        options={({ route }) => ({
+          title: route.params?.taskId ? t('edit_task') : t('new_task'),
+        })}
+      />
+      <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ title: t('task_details') }} />
+    </Stack.Navigator>
+  );
+};
 
 const styles = StyleSheet.create({
   addButton: {

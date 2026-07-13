@@ -1,6 +1,8 @@
 import { Platform } from 'react-native';
 
+import { useAppStore } from '../storage/useAppStore';
 import { Task } from '../types/task';
+import { translate } from '../utils/translations';
 
 export type RemoteTask = Omit<Task, 'id' | 'remoteId'> & {
   id: string;
@@ -32,6 +34,7 @@ const configuredBaseUrl = Platform.select({
 export const API_BASE_URL = (configuredBaseUrl ?? defaultBaseUrl).replace(/\/$/, '');
 
 const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
+  const language = useAppStore.getState().settings.language;
   const method = init?.method ?? 'GET';
   const url = `${API_BASE_URL}${path}`;
   const controller = new AbortController();
@@ -49,13 +52,16 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
     });
   } catch (error) {
     const reason = error instanceof Error ? error.message : 'Network request failed';
-    throw new ApiError(`Cannot reach ${API_BASE_URL}. Start json-server and check the API URL. ${reason}`);
+    throw new ApiError(translate(language, 'api_cannot_reach', { url: API_BASE_URL, reason }));
   } finally {
     clearTimeout(timeoutId);
   }
 
   if (!response.ok) {
-    throw new ApiError(`${method} ${path} failed with status ${response.status}`, response.status);
+    throw new ApiError(
+      translate(language, 'api_method_failed', { method, path, status: response.status }),
+      response.status,
+    );
   }
 
   if (response.status === 204) {
@@ -67,14 +73,17 @@ const request = async <T>(path: string, init?: RequestInit): Promise<T> => {
 
   if (!contentType.includes('application/json')) {
     throw new ApiError(
-      `Expected JSON from ${url}, got "${contentType || 'unknown'}". Check json-server URL.`,
+      translate(language, 'api_expected_json', {
+        url,
+        contentType: contentType || translate(language, 'server_status_unknown'),
+      }),
     );
   }
 
   try {
     return JSON.parse(responseText) as T;
   } catch {
-    throw new ApiError(`Invalid JSON from ${url}. Check json-server response.`);
+    throw new ApiError(translate(language, 'api_invalid_json', { url }));
   }
 };
 

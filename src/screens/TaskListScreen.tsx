@@ -10,44 +10,48 @@ import { StatusBadge } from '../components/StatusBadge';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { TaskStatus } from '../types/task';
+import { useTranslation } from '../utils/useTranslation';
 import { formatDateTime } from '../utils/date';
 import { getSyncStatusLabel, getTaskShortLocation, sortTasks } from '../utils/task';
 
 type StatusFilter = 'all' | TaskStatus;
 
-const filterOptions: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'new', label: 'New' },
-  { value: 'in_progress', label: 'In progress' },
-  { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
-];
-
-const sortOptions = [
-  { value: 'createdAt', label: 'Added' },
-  { value: 'dueDate', label: 'Deadline' },
-  { value: 'status', label: 'Status' },
-] as const;
-
-const getDirectionLabel = (sortMode: (typeof sortOptions)[number]['value'], direction: 'asc' | 'desc') => {
+const getDirectionLabel = (
+  sortMode: 'createdAt' | 'dueDate' | 'status',
+  direction: 'asc' | 'desc',
+  t: ReturnType<typeof useTranslation>['t'],
+) => {
   if (sortMode === 'createdAt') {
-    return direction === 'asc' ? 'Oldest first' : 'Newest first';
+    return direction === 'asc' ? t('direction_oldest_first') : t('direction_newest_first');
   }
   if (sortMode === 'dueDate') {
-    return direction === 'asc' ? 'Due soon' : 'Due later';
+    return direction === 'asc' ? t('direction_due_soon') : t('direction_due_later');
   }
-  return direction === 'asc' ? 'New first' : 'Cancelled first';
+  return direction === 'asc' ? t('direction_new_first') : t('direction_cancelled_first');
 };
 
 export const TaskListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
+  const { language, t } = useTranslation();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const rawTasks = useAppStore((state) => state.tasks);
   const sortMode = useAppStore((state) => state.sortMode);
   const sortDirection = useAppStore((state) => state.sortDirection);
   const setSortMode = useAppStore((state) => state.setSortMode);
   const toggleSortDirection = useAppStore((state) => state.toggleSortDirection);
+  const filterOptions: { value: StatusFilter; label: string }[] = [
+    { value: 'all', label: t('filter_all') },
+    { value: 'new', label: t('filter_new') },
+    { value: 'in_progress', label: t('filter_in_progress') },
+    { value: 'completed', label: t('filter_completed') },
+    { value: 'cancelled', label: t('filter_cancelled') },
+  ];
+  const sortOptions = [
+    { value: 'createdAt', label: t('sort_added') },
+    { value: 'dueDate', label: t('sort_deadline') },
+    { value: 'status', label: t('sort_status') },
+  ] as const;
   const counts = useMemo(
     () => ({
       all: rawTasks.length,
@@ -74,16 +78,21 @@ export const TaskListScreen = () => {
         ListHeaderComponent={
           <View style={styles.headerContent}>
             <View style={[styles.hero, { backgroundColor: colors.accent }]}>
-              <Text style={styles.eyebrow}>FIELD OVERVIEW</Text>
-              <Text style={styles.heroTitle}>{activeCount} active task{activeCount === 1 ? '' : 's'}</Text>
+              <Text style={styles.eyebrow}>{t('field_overview')}</Text>
+              <Text style={styles.heroTitle}>
+                {t('active_tasks', {
+                  count: activeCount,
+                  suffix: activeCount === 1 ? t('active_tasks_suffix_one') : t('active_tasks_suffix_many'),
+                })}
+              </Text>
               <Text style={styles.heroSubtitle}>
-                {counts.in_progress} in progress · {counts.completed} completed
+                {t('hero_subtitle', { inProgress: counts.in_progress, completed: counts.completed })}
               </Text>
             </View>
 
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>Filter by status</Text>
-              <Text style={[styles.sectionHint, { color: colors.textMuted }]}>{tasks.length} shown</Text>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('filter_by_status')}</Text>
+              <Text style={[styles.sectionHint, { color: colors.textMuted }]}>{t('shown_count', { count: tasks.length })}</Text>
             </View>
             <ScrollView
               horizontal
@@ -121,10 +130,10 @@ export const TaskListScreen = () => {
 
             <View style={[styles.sortPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
               <View style={styles.sortTopRow}>
-                <Text style={[styles.sortTitle, { color: colors.text }]}>Sort</Text>
+                <Text style={[styles.sortTitle, { color: colors.text }]}>{t('sort')}</Text>
                 <Pressable onPress={toggleSortDirection} hitSlop={8}>
                   <Text style={[styles.directionText, { color: colors.primary }]}>
-                    {getDirectionLabel(sortMode, sortDirection)}
+                    {getDirectionLabel(sortMode, sortDirection, t)}
                   </Text>
                 </Pressable>
               </View>
@@ -149,8 +158,12 @@ export const TaskListScreen = () => {
         }
         ListEmptyComponent={
           <EmptyState
-            title={rawTasks.length ? `No ${filterOptions.find((item) => item.value === statusFilter)?.label} tasks` : 'No tasks yet'}
-            subtitle={rawTasks.length ? 'Choose another status filter.' : 'Create the first field task from the button above.'}
+            title={
+              rawTasks.length
+                ? t('no_filtered_tasks', { status: filterOptions.find((item) => item.value === statusFilter)?.label ?? '' })
+                : t('no_tasks_yet')
+            }
+            subtitle={rawTasks.length ? t('choose_another_status_filter') : t('create_first_task')}
           />
         }
         renderItem={({ item }) => {
@@ -166,7 +179,7 @@ export const TaskListScreen = () => {
           return (
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel={`${item.title}, ${item.status}, ${formatDateTime(item.dueDate)}`}
+              accessibilityLabel={`${item.title}, ${getSyncStatusLabel(item.syncStatus, language)}, ${formatDateTime(item.dueDate)}`}
               onPress={() => navigation.navigate('TaskDetails', { taskId: item.id })}
               style={({ pressed }) => [
                 styles.taskCard,
@@ -186,11 +199,11 @@ export const TaskListScreen = () => {
                 <StatusBadge status={item.status} />
                 <View style={[styles.metaGrid, { borderTopColor: colors.border }]}>
                   <View style={styles.metaBlock}>
-                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>DEADLINE</Text>
+                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>{t('deadline')}</Text>
                     <Text style={[styles.metaValue, { color: colors.text }]}>{formatDateTime(item.dueDate)}</Text>
                   </View>
                   <View style={styles.metaBlock}>
-                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>LOCATION</Text>
+                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>{t('location')}</Text>
                     <Text style={[styles.metaValue, { color: colors.text }]} numberOfLines={2}>
                       {getTaskShortLocation(item.location.address)}
                     </Text>
@@ -210,7 +223,7 @@ export const TaskListScreen = () => {
                       },
                     ]}
                   />
-                  <Text style={[styles.syncText, { color: colors.textMuted }]}>{getSyncStatusLabel(item.syncStatus)}</Text>
+                  <Text style={[styles.syncText, { color: colors.textMuted }]}>{getSyncStatusLabel(item.syncStatus, language)}</Text>
                 </View>
               </View>
             </Pressable>

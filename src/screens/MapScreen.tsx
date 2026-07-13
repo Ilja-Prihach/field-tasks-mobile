@@ -8,16 +8,18 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { TaskMap } from '../features/location/TaskMap';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
+import { useTranslation } from '../utils/useTranslation';
 
 export const MapScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
+  const { t } = useTranslation();
   const tasks = useAppStore((state) => state.tasks);
 
   if (!tasks.length) {
     return (
       <ScreenContainer scroll>
-        <EmptyState title="No map markers" subtitle="Create tasks with coordinates to see them on the map." />
+        <EmptyState title={t('no_map_markers')} subtitle={t('create_tasks_with_coordinates')} />
       </ScreenContainer>
     );
   }
@@ -29,7 +31,7 @@ export const MapScreen = () => {
         style={StyleSheet.absoluteFill}
         onTaskPress={(task) => navigation.navigate('TaskDetails', { taskId: task.id })}
       />
-      <Text style={[styles.hint, { color: colors.text }]}>Tap a marker to open task details.</Text>
+      <Text style={[styles.hint, { color: colors.text }]}>{t('tap_marker_hint')}</Text>
     </ScreenContainer>
   );
 };

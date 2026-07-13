@@ -3,6 +3,7 @@ export type SyncStatus = 'pending' | 'synced' | 'failed';
 export type SortMode = 'createdAt' | 'dueDate' | 'status';
 export type SortDirection = 'asc' | 'desc';
 export type ThemeMode = 'light' | 'dark';
+export type LanguageCode = 'en' | 'ru';
 export type ServerStatus = 'unknown' | 'reachable' | 'unreachable';
 
 export type TaskAttachment = {
@@ -79,4 +80,5 @@ export type NotificationScheduleResult = {
 export type AppSettings = {
   themeMode: ThemeMode;
   notificationDemoMode: boolean;
+  language: LanguageCode;
 };

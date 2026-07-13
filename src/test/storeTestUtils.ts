@@ -17,6 +17,7 @@ export const resetAppStore = () => {
     settings: {
       themeMode: 'light',
       notificationDemoMode: true,
+      language: 'en',
     },
   });
 };

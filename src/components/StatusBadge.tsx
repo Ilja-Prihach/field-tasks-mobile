@@ -2,10 +2,12 @@ import { StyleSheet, Text, View } from 'react-native';
 
 import { TaskStatus } from '../types/task';
 import { useThemeColors } from '../theme/useThemeColors';
+import { useTranslation } from '../utils/useTranslation';
 import { getStatusLabel } from '../utils/task';
 
 export const StatusBadge = ({ status }: { status: TaskStatus }) => {
   const colors = useThemeColors();
+  const { language } = useTranslation();
 
   const statusColor =
     status === 'completed'
@@ -19,7 +21,7 @@ export const StatusBadge = ({ status }: { status: TaskStatus }) => {
   return (
     <View style={[styles.badge, { backgroundColor: `${statusColor}20` }]}>
       <View style={[styles.dot, { backgroundColor: statusColor }]} />
-      <Text style={[styles.text, { color: statusColor }]}>{getStatusLabel(status)}</Text>
+      <Text style={[styles.text, { color: statusColor }]}>{getStatusLabel(status, language)}</Text>
     </View>
   );
 };

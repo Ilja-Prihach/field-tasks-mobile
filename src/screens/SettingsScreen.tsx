@@ -7,10 +7,13 @@ import { SectionCard } from '../components/SectionCard';
 import { syncPendingChanges } from '../features/sync/syncService';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
+import { useTranslation } from '../utils/useTranslation';
+import { getServerStatusTranslationKey, translate } from '../utils/translations';
 import { formatDateTime } from '../utils/date';
 
 export const SettingsScreen = () => {
   const colors = useThemeColors();
+  const { language, t } = useTranslation();
   const isOnline = useAppStore((state) => state.isOnline);
   const isSyncing = useAppStore((state) => state.isSyncing);
   const serverStatus = useAppStore((state) => state.serverStatus);
@@ -20,30 +23,38 @@ export const SettingsScreen = () => {
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
   const pendingChanges = useAppStore((state) => state.pendingChanges.length);
   const setThemeMode = useAppStore((state) => state.setThemeMode);
+  const setLanguage = useAppStore((state) => state.setLanguage);
   const setNotificationDemoMode = useAppStore((state) => state.setNotificationDemoMode);
 
   return (
     <ScreenContainer scroll>
-      <SectionCard title="Appearance">
+      <SectionCard title={t('appearance')}>
         <View style={styles.row}>
-          <Text style={{ color: colors.text }}>Dark mode</Text>
+          <Text style={{ color: colors.text }}>{t('dark_mode')}</Text>
           <Switch value={themeMode === 'dark'} onValueChange={(value) => setThemeMode(value ? 'dark' : 'light')} />
+        </View>
+        <View style={styles.languageBlock}>
+          <Text style={{ color: colors.text }}>{t('language')}</Text>
+          <View style={styles.languageButtons}>
+            <PrimaryButton label={t('english')} onPress={() => setLanguage('en')} variant={language === 'en' ? 'primary' : 'secondary'} />
+            <PrimaryButton label={t('russian')} onPress={() => setLanguage('ru')} variant={language === 'ru' ? 'primary' : 'secondary'} />
+          </View>
         </View>
       </SectionCard>
 
-      <SectionCard title="Notifications">
+      <SectionCard title={t('notifications')}>
         <View style={styles.row}>
-          <Text style={{ color: colors.text }}>Demo mode (45 sec reminder)</Text>
+          <Text style={{ color: colors.text }}>{t('demo_mode_45')}</Text>
           <Switch value={notificationDemoMode} onValueChange={setNotificationDemoMode} />
         </View>
         <Text style={{ color: colors.textMuted }}>
-          If a deadline is too close, the app uses a fallback reminder instead of skipping the notification.
+          {t('notifications_fallback_help')}
         </Text>
       </SectionCard>
 
-      <SectionCard title="Sync">
-        <Text style={{ color: colors.textMuted }}>Server: {API_BASE_URL}</Text>
-        <Text style={{ color: colors.textMuted }}>Network: {isOnline ? 'available' : 'offline'}</Text>
+      <SectionCard title={t('sync')}>
+        <Text style={{ color: colors.textMuted }}>{t('server')}: {API_BASE_URL}</Text>
+        <Text style={{ color: colors.textMuted }}>{t('network')}: {isOnline ? t('network_available') : t('network_offline')}</Text>
         <Text
           style={{
             color:
@@ -54,50 +65,50 @@ export const SettingsScreen = () => {
                   : colors.textMuted,
           }}
         >
-          Mock server: {serverStatus}
+          {t('mock_server')}: {translate(language, getServerStatusTranslationKey(serverStatus))}
         </Text>
-        <Text style={{ color: colors.textMuted }}>Sync: {isSyncing ? 'in progress' : 'idle'}</Text>
-        <Text style={{ color: colors.textMuted }}>Pending changes: {pendingChanges}</Text>
+        <Text style={{ color: colors.textMuted }}>{t('sync_state')}: {isSyncing ? t('sync_in_progress') : t('sync_idle')}</Text>
+        <Text style={{ color: colors.textMuted }}>{t('pending_changes')}: {pendingChanges}</Text>
         {lastSyncedAt ? (
-          <Text style={{ color: colors.textMuted }}>Last successful sync: {formatDateTime(lastSyncedAt)}</Text>
+          <Text style={{ color: colors.textMuted }}>{t('last_successful_sync')}: {formatDateTime(lastSyncedAt)}</Text>
         ) : null}
         {lastSyncError ? <Text style={{ color: colors.danger }}>{lastSyncError}</Text> : null}
         <PrimaryButton
-          label={isSyncing ? 'Syncing...' : 'Run sync now'}
+          label={isSyncing ? t('syncing') : t('run_sync_now')}
           disabled={isSyncing || !isOnline}
           onPress={() =>
             void syncPendingChanges({ pullRemote: true })
               .then((summary) => {
                 if (!summary.attempted && !summary.failed) {
                   Alert.alert(
-                    'Sync status',
-                    isOnline ? 'Nothing is waiting for sync right now.' : 'No internet connection.',
+                    t('sync_status'),
+                    isOnline ? t('nothing_waiting_for_sync') : t('no_internet_connection'),
                   );
                   return;
                 }
 
                 if (!summary.failed) {
-                  Alert.alert('Sync completed', `${summary.synced} task(s) synced successfully.`);
+                  Alert.alert(t('sync_completed'), t('tasks_synced_successfully', { count: summary.synced }));
                   return;
                 }
 
                 Alert.alert(
-                  'Sync finished with issues',
-                  `${summary.synced} synced, ${summary.failed} failed. Check History for details.`,
+                  t('sync_finished_with_issues'),
+                  t('sync_summary_with_failures', { synced: summary.synced, failed: summary.failed }),
                 );
               })
               .catch((error) =>
-                Alert.alert('Sync failed', error instanceof Error ? error.message : 'Unexpected error'),
+                Alert.alert(t('sync_failed_title'), error instanceof Error ? error.message : t('unexpected_error')),
               )
           }
         />
       </SectionCard>
 
-      <SectionCard title="About">
-        <Text style={[styles.aboutTitle, { color: colors.text }]}>Field Tasks MVP</Text>
-        <Text style={{ color: colors.textMuted }}>Candidate code: SA-RN-4827</Text>
+      <SectionCard title={t('about')}>
+        <Text style={[styles.aboutTitle, { color: colors.text }]}>{t('field_tasks_mvp')}</Text>
+        <Text style={{ color: colors.textMuted }}>{t('candidate_code')}: SA-RN-4827</Text>
         <Text style={{ color: colors.textMuted }}>
-          Offline-first Android-oriented Expo app for task planning, reminders and mock sync.
+          {t('about_description')}
         </Text>
       </SectionCard>
     </ScreenContainer>
@@ -114,5 +125,12 @@ const styles = StyleSheet.create({
   aboutTitle: {
     fontSize: 18,
     fontWeight: '700',
+  },
+  languageBlock: {
+    gap: 12,
+  },
+  languageButtons: {
+    flexDirection: 'row',
+    gap: 12,
   },
 });

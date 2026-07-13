@@ -5,6 +5,7 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import { createId } from '../utils/id';
 import {
   AppSettings,
+  LanguageCode,
   PendingChange,
   ServerStatus,
   SortDirection,
@@ -15,6 +16,7 @@ import {
   TaskPayload,
   TaskStatus,
 } from '../types/task';
+import { getDefaultLanguage, getStatusTranslationKey, translate } from '../utils/translations';
 
 type AppState = {
   hasHydrated: boolean;
@@ -37,6 +39,7 @@ type AppState = {
   setSortMode: (value: SortMode) => void;
   toggleSortDirection: () => void;
   setThemeMode: (value: AppSettings['themeMode']) => void;
+  setLanguage: (value: LanguageCode) => void;
   setNotificationDemoMode: (value: boolean) => void;
   createTask: (payload: TaskPayload) => Task;
   editTask: (taskId: string, payload: TaskPayload) => Task | undefined;
@@ -113,6 +116,7 @@ export const useAppStore = create<AppState>()(
       settings: {
         themeMode: 'light',
         notificationDemoMode: true,
+        language: getDefaultLanguage(),
       },
       setHasHydrated: (value) => set({ hasHydrated: value }),
       setOnlineStatus: (value) => set({ isOnline: value }),
@@ -133,6 +137,13 @@ export const useAppStore = create<AppState>()(
             themeMode: value,
           },
         })),
+      setLanguage: (value) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            language: value,
+          },
+        })),
       setNotificationDemoMode: (value) =>
         set((state) => ({
           settings: {
@@ -141,6 +152,7 @@ export const useAppStore = create<AppState>()(
           },
         })),
       createTask: (payload) => {
+        const language = get().settings.language;
         const now = new Date().toISOString();
         const task: Task = {
           id: createId('task'),
@@ -171,14 +183,16 @@ export const useAppStore = create<AppState>()(
             {
               taskId: task.id,
               actionType: 'created',
-              description: `Task "${task.title}" was created.`,
+              description: translate(language, 'history_task_created', { title: task.title }),
             },
             ...(task.attachments.length
               ? [
                   {
                     taskId: task.id,
                     actionType: 'attachment_added' as const,
-                    description: `${task.attachments.length} attachment(s) added.`,
+                    description: translate(language, 'history_attachments_added', {
+                      count: task.attachments.length,
+                    }),
                   },
                 ]
               : []),
@@ -188,6 +202,7 @@ export const useAppStore = create<AppState>()(
         return task;
       },
       editTask: (taskId, payload) => {
+        const language = get().settings.language;
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current) {
           return undefined;
@@ -225,14 +240,16 @@ export const useAppStore = create<AppState>()(
             {
               taskId,
               actionType: 'updated',
-              description: `Task "${nextTask.title}" was updated.`,
+              description: translate(language, 'history_task_updated', { title: nextTask.title }),
             },
             ...(current.status !== nextTask.status
               ? [
                   {
                     taskId,
                     actionType: 'status_changed' as const,
-                    description: `Status changed to "${nextTask.status}".`,
+                    description: translate(language, 'history_status_to', {
+                      status: translate(language, getStatusTranslationKey(nextTask.status)),
+                    }),
                   },
                 ]
               : []),
@@ -241,7 +258,7 @@ export const useAppStore = create<AppState>()(
                   {
                     taskId,
                     actionType: 'attachment_added' as const,
-                    description: `${attachmentDiff} attachment(s) added.`,
+                    description: translate(language, 'history_attachments_added', { count: attachmentDiff }),
                   },
                 ]
               : []),
@@ -251,6 +268,7 @@ export const useAppStore = create<AppState>()(
         return nextTask;
       },
       updateTaskStatus: (taskId, status) => {
+        const language = get().settings.language;
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current || current.status === status) {
           return current;
@@ -287,7 +305,9 @@ export const useAppStore = create<AppState>()(
             {
               taskId,
               actionType: 'status_changed',
-              description: `Status changed to "${status}".`,
+              description: translate(language, 'history_status_to', {
+                status: translate(language, getStatusTranslationKey(status)),
+              }),
             },
           ]),
         }));
@@ -295,6 +315,7 @@ export const useAppStore = create<AppState>()(
         return nextTask;
       },
       deleteTask: (taskId) => {
+        const language = get().settings.language;
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current) {
           return;
@@ -313,7 +334,7 @@ export const useAppStore = create<AppState>()(
             {
               taskId,
               actionType: 'deleted',
-              description: `Task "${current.title}" was deleted.`,
+              description: translate(language, 'history_task_deleted', { title: current.title }),
             },
           ]),
         }));
@@ -417,6 +438,13 @@ export const useAppStore = create<AppState>()(
         settings: state.settings,
       }),
       onRehydrateStorage: () => (state) => {
+        if (state) {
+          state.settings = {
+            themeMode: state.settings?.themeMode ?? 'light',
+            notificationDemoMode: state.settings?.notificationDemoMode ?? true,
+            language: state.settings?.language ?? getDefaultLanguage(),
+          };
+        }
         state?.reconcileSyncStatuses();
         state?.setHasHydrated(true);
       },

@@ -12,13 +12,15 @@ import { TaskMap } from '../features/location/TaskMap';
 import { cancelTaskNotification, scheduleTaskNotification } from '../features/notifications/notificationService';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
+import { useTranslation } from '../utils/useTranslation';
 import { formatDateTime } from '../utils/date';
-import { getSyncStatusLabel } from '../utils/task';
+import { getHistoryActionLabel, getSyncStatusLabel } from '../utils/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetails'>;
 
 export const TaskDetailsScreen = ({ navigation, route }: Props) => {
   const colors = useThemeColors();
+  const { language, t } = useTranslation();
   const [brokenPreviewIds, setBrokenPreviewIds] = useState<string[]>([]);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
   const tasks = useAppStore((state) => state.tasks);
@@ -39,7 +41,7 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
     return (
       <ScreenContainer scroll>
         <SectionCard>
-          <Text style={{ color: colors.text }}>Task not found. It may have been deleted.</Text>
+          <Text style={{ color: colors.text }}>{t('task_not_found')}</Text>
         </SectionCard>
       </ScreenContainer>
     );
@@ -56,18 +58,18 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
       const result = await scheduleTaskNotification(updated, notificationDemoMode);
       setTaskNotification(task.id, result?.notificationId ?? null);
       if (result?.warning) {
-        Alert.alert('Reminder adjusted', result.warning);
+        Alert.alert(t('reminder_adjusted'), result.warning);
       }
     } catch (error) {
-      Alert.alert('Notification error', error instanceof Error ? error.message : 'Unexpected error');
+      Alert.alert(t('notification_error'), error instanceof Error ? error.message : t('unexpected_error'));
     }
   };
 
   const handleDelete = () => {
-    Alert.alert('Delete task', 'This action keeps the history entry but removes the task from the list.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('delete_task'), t('delete_task_confirmation'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('delete'),
         style: 'destructive',
         onPress: async () => {
           try {
@@ -87,13 +89,13 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
       <SectionCard>
         <Text style={[styles.title, { color: colors.text }]}>{task.title}</Text>
         <StatusBadge status={task.status} />
-        <InfoRow label="Description" value={task.description} />
-        <InfoRow label="Due" value={formatDateTime(task.dueDate)} />
-        <InfoRow label="Sync" value={getSyncStatusLabel(task.syncStatus)} />
+        <InfoRow label={t('description')} value={task.description} />
+        <InfoRow label={t('due')} value={formatDateTime(task.dueDate)} />
+        <InfoRow label={t('sync')} value={getSyncStatusLabel(task.syncStatus, language)} />
       </SectionCard>
 
-      <SectionCard title="Location">
-        <InfoRow label="Address" value={task.location.address} />
+      <SectionCard title={t('location')}>
+        <InfoRow label={t('address')} value={task.location.address} />
         <TaskMap
           tasks={[task]}
           style={styles.map}
@@ -101,19 +103,19 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
         />
       </SectionCard>
 
-      <SectionCard title="Actions">
-        <PrimaryButton label="Edit task" onPress={() => navigation.navigate('TaskForm', { taskId: task.id })} />
+      <SectionCard title={t('actions')}>
+        <PrimaryButton label={t('edit_task_button')} onPress={() => navigation.navigate('TaskForm', { taskId: task.id })} />
         <View style={styles.actionRow}>
-          <PrimaryButton label="In Progress" onPress={() => void handleStatusChange('in_progress')} variant="secondary" />
-          <PrimaryButton label="Completed" onPress={() => void handleStatusChange('completed')} variant="secondary" />
+          <PrimaryButton label={t('in_progress')} onPress={() => void handleStatusChange('in_progress')} variant="secondary" />
+          <PrimaryButton label={t('completed')} onPress={() => void handleStatusChange('completed')} variant="secondary" />
         </View>
         <View style={styles.actionRow}>
-          <PrimaryButton label="Cancelled" onPress={() => void handleStatusChange('cancelled')} variant="secondary" />
-          <PrimaryButton label="Delete" onPress={handleDelete} variant="danger" />
+          <PrimaryButton label={t('cancelled')} onPress={() => void handleStatusChange('cancelled')} variant="secondary" />
+          <PrimaryButton label={t('delete')} onPress={handleDelete} variant="danger" />
         </View>
       </SectionCard>
 
-      <SectionCard title="Attachments">
+      <SectionCard title={t('attachments')}>
         {task.attachments.length ? (
           <View style={styles.attachmentsGrid}>
             {task.attachments.map((attachment) => (
@@ -121,7 +123,7 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
                 {brokenPreviewIds.includes(attachment.id) ? (
                   <View style={[styles.attachmentFallback, { backgroundColor: colors.surfaceMuted }]}>
                     <Text style={[styles.attachmentFallbackText, { color: colors.textMuted }]}>
-                      Preview unavailable
+                      {t('preview_unavailable')}
                     </Text>
                   </View>
                 ) : (
@@ -146,21 +148,23 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
             ))}
           </View>
         ) : (
-          <Text style={{ color: colors.textMuted }}>No attachments.</Text>
+          <Text style={{ color: colors.textMuted }}>{t('no_attachments')}</Text>
         )}
       </SectionCard>
 
-      <SectionCard title="Task history">
+      <SectionCard title={t('task_history')}>
         {history.length ? (
           history.map((entry) => (
             <View key={entry.id} style={styles.historyItem}>
-              <Text style={[styles.historyTitle, { color: colors.text }]}>{entry.actionType}</Text>
+              <Text style={[styles.historyTitle, { color: colors.text }]}>
+                {getHistoryActionLabel(entry.actionType, language)}
+              </Text>
               <Text style={{ color: colors.textMuted }}>{entry.description}</Text>
               <Text style={{ color: colors.textMuted }}>{formatDateTime(entry.timestamp)}</Text>
             </View>
           ))
         ) : (
-          <Text style={{ color: colors.textMuted }}>No history entries yet.</Text>
+          <Text style={{ color: colors.textMuted }}>{t('no_history_entries')}</Text>
         )}
       </SectionCard>
     </ScreenContainer>

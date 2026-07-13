@@ -1,6 +1,7 @@
 import { ApiError, RemoteTask, tasksApi, toLocalTask } from '../../api/tasksApi';
 import { useAppStore } from '../../storage/useAppStore';
 import { PendingChange } from '../../types/task';
+import { translate } from '../../utils/translations';
 
 let syncRunInFlight: Promise<SyncSummary> | null = null;
 
@@ -12,7 +13,9 @@ export type SyncSummary = {
 };
 
 const getErrorMessage = (error: unknown) =>
-  error instanceof Error ? error.message : 'Unexpected sync error.';
+  error instanceof Error
+    ? error.message
+    : translate(useAppStore.getState().settings.language, 'unexpected_sync_error');
 
 const addSyncHistoryEntry = (
   change: PendingChange,
@@ -60,7 +63,11 @@ const findRemoteId = (change: PendingChange, remoteTasks: RemoteTask[]) => {
 
 const syncUpsert = async (change: PendingChange, remoteId?: string) => {
   if (!change.payload) {
-    throw new Error(`Local sync payload is missing for task ${change.taskId}.`);
+    throw new Error(
+      translate(useAppStore.getState().settings.language, 'local_sync_payload_missing', {
+        taskId: change.taskId,
+      }),
+    );
   }
 
   if (!remoteId) {
@@ -113,7 +120,11 @@ const runSync = async (pullRemote: boolean): Promise<SyncSummary> => {
   for (const change of changes) {
     initialState.updatePendingChangeAttempt(change.taskId, { attemptedAt: startedAt, error: null });
     if (!change.lastAttemptedAt || change.lastAttemptedAt < change.updatedAt) {
-      addSyncHistoryEntry(change, 'sync_started', `Sync started for task ${change.taskId}.`);
+      addSyncHistoryEntry(
+        change,
+        'sync_started',
+        translate(initialState.settings.language, 'sync_started_for_task', { taskId: change.taskId }),
+      );
     }
   }
 
@@ -144,7 +155,11 @@ const runSync = async (pullRemote: boolean): Promise<SyncSummary> => {
         // Do not remove a newer edit that was queued while this request was running.
         if (currentChange?.updatedAt === change.updatedAt) {
           useAppStore.getState().removePendingChange(change.taskId);
-          addSyncHistoryEntry(change, 'synced', `Task ${change.taskId} synced successfully.`);
+          addSyncHistoryEntry(
+            change,
+            'synced',
+            translate(initialState.settings.language, 'task_synced_successfully', { taskId: change.taskId }),
+          );
           synced += 1;
         }
       } catch (error) {
