@@ -1,6 +1,7 @@
 export type TaskStatus = 'new' | 'in_progress' | 'completed' | 'cancelled';
 export type SyncStatus = 'pending' | 'synced' | 'failed';
 export type SortMode = 'createdAt' | 'dueDate' | 'status';
+export type SortDirection = 'asc' | 'desc';
 export type ThemeMode = 'light' | 'dark';
 export type ServerStatus = 'unknown' | 'reachable' | 'unreachable';
 

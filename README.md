@@ -157,6 +157,7 @@ Only one process should listen on port `3001`. If Android reports an HTML respon
 - The user enters a manual address and can use preset coordinates for stable map placement.
 - Preset locations are available to speed up testing and ensure visible map markers.
 - Coordinates are kept internal for map placement; normal task screens focus on address and map preview instead of raw latitude/longitude.
+- iOS renders markers with `react-native-maps` and MapKit. Android renders the OpenStreetMap-based CARTO basemap with an in-app marker overlay because native Google Maps requires an external API key, which this assignment intentionally avoids.
 
 ### State Management
 
@@ -165,12 +166,25 @@ Only one process should listen on port `3001`. If Android reports an HTML respon
 
 ## Android APK Build
 
-One practical local path for review builds:
+For a debug APK used with the local Metro server:
+
+```bash
+cd android
+./gradlew app:assembleDebug
+```
+
+The verified debug APK output is:
+
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+Build this file before running `adb install`; otherwise ADB will report that the APK was not found. For a standalone review build that does not depend on Metro:
 
 ```bash
 npx expo prebuild -p android
 cd android
-./gradlew assembleRelease
+NODE_ENV=production ./gradlew app:assembleRelease
 ```
 
 Expected APK output:
@@ -190,6 +204,7 @@ npm run typecheck
 ## Known Limitations
 
 - Coordinates are entered manually because external geocoding is intentionally not used.
+- Android map tiles require an internet connection, while tasks, addresses and marker coordinates remain available offline.
 - Sync is intentionally simple and optimized for assignment scope, not for multi-user collaboration.
 - Attachment files rely on local device URIs; if the underlying file is removed by the OS/user, the app handles the missing preview gracefully but cannot restore the asset.
 - Local notification scheduling is implemented on both platforms, but exact delivery timing is controlled by the operating system and should be verified with the 45-second demo mode in a development or release build.

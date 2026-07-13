@@ -1,11 +1,11 @@
 import { StyleSheet, Text } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import MapView, { Marker } from 'react-native-maps';
 
 import { RootStackParamList } from '../app/AppNavigator';
 import { EmptyState } from '../components/EmptyState';
 import { ScreenContainer } from '../components/ScreenContainer';
+import { TaskMap } from '../features/location/TaskMap';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 
@@ -24,30 +24,12 @@ export const MapScreen = () => {
 
   return (
     <ScreenContainer>
-      <MapView
+      <TaskMap
+        tasks={tasks}
         style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: tasks[0].location.latitude,
-          longitude: tasks[0].location.longitude,
-          latitudeDelta: 8,
-          longitudeDelta: 8,
-        }}
-      >
-        {tasks.map((task) => (
-          <Marker
-            key={task.id}
-            coordinate={{
-              latitude: task.location.latitude,
-              longitude: task.location.longitude,
-            }}
-            title={task.title}
-            description={task.location.address}
-            pinColor={task.status === 'completed' ? 'green' : task.status === 'cancelled' ? 'red' : undefined}
-            onCalloutPress={() => navigation.navigate('TaskDetails', { taskId: task.id })}
-          />
-        ))}
-      </MapView>
-      <Text style={[styles.hint, { color: colors.text }]}>Tap a marker callout to open task details.</Text>
+        onTaskPress={(task) => navigation.navigate('TaskDetails', { taskId: task.id })}
+      />
+      <Text style={[styles.hint, { color: colors.text }]}>Tap a marker to open task details.</Text>
     </ScreenContainer>
   );
 };

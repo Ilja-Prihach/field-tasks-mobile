@@ -13,38 +13,69 @@ import { useThemeColors } from '../theme/useThemeColors';
 import { formatDateTime } from '../utils/date';
 import { getSyncStatusLabel, getTaskShortLocation, sortTasks } from '../utils/task';
 
-const sortOptions = ['createdAt', 'dueDate', 'status'] as const;
+const sortOptions = [
+  { value: 'createdAt', label: 'Date added' },
+  { value: 'dueDate', label: 'Deadline' },
+  { value: 'status', label: 'Status' },
+] as const;
+
+const getDirectionLabel = (sortMode: (typeof sortOptions)[number]['value'], direction: 'asc' | 'desc') => {
+  if (sortMode === 'createdAt') {
+    return direction === 'asc' ? 'Oldest first' : 'Newest first';
+  }
+  if (sortMode === 'dueDate') {
+    return direction === 'asc' ? 'Soonest first' : 'Latest first';
+  }
+  return direction === 'asc' ? 'New to Cancelled' : 'Cancelled to New';
+};
 
 export const TaskListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const rawTasks = useAppStore((state) => state.tasks);
   const sortMode = useAppStore((state) => state.sortMode);
+  const sortDirection = useAppStore((state) => state.sortDirection);
   const setSortMode = useAppStore((state) => state.setSortMode);
-  const tasks = useMemo(() => sortTasks(rawTasks, sortMode), [rawTasks, sortMode]);
+  const toggleSortDirection = useAppStore((state) => state.toggleSortDirection);
+  const tasks = useMemo(
+    () => sortTasks(rawTasks, sortMode, sortDirection),
+    [rawTasks, sortDirection, sortMode],
+  );
 
   return (
     <ScreenContainer>
       <View style={styles.container}>
-        <SectionCard title="Sorting">
+        <SectionCard title="Sort tasks">
           <View style={styles.sortRow}>
             {sortOptions.map((option) => (
               <Pressable
-                key={option}
-                onPress={() => setSortMode(option)}
+                key={option.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: sortMode === option.value }}
+                onPress={() => setSortMode(option.value)}
                 style={[
                   styles.sortButton,
                   {
-                    backgroundColor: sortMode === option ? colors.primary : colors.surfaceMuted,
+                    backgroundColor: sortMode === option.value ? colors.primary : colors.surfaceMuted,
                   },
                 ]}
               >
-                <Text style={{ color: sortMode === option ? '#fff' : colors.text, fontWeight: '700' }}>
-                  {option}
+                <Text style={{ color: sortMode === option.value ? '#fff' : colors.text, fontWeight: '700' }}>
+                  {option.label}
                 </Text>
               </Pressable>
             ))}
           </View>
+          <Pressable
+            accessibilityRole="button"
+            onPress={toggleSortDirection}
+            style={[styles.directionButton, { borderColor: colors.border }]}
+          >
+            <Text style={{ color: colors.textMuted }}>Order</Text>
+            <Text style={[styles.directionLabel, { color: colors.text }]}>
+              {getDirectionLabel(sortMode, sortDirection)} - Change
+            </Text>
+          </Pressable>
         </SectionCard>
 
         <FlatList
@@ -107,6 +138,20 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 8,
+  },
+  directionButton: {
+    minHeight: 46,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  directionLabel: {
+    fontWeight: '700',
   },
   listContent: {
     gap: 12,

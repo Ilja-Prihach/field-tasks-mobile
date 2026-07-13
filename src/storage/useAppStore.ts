@@ -7,6 +7,7 @@ import {
   AppSettings,
   PendingChange,
   ServerStatus,
+  SortDirection,
   SortMode,
   SyncStatus,
   Task,
@@ -26,6 +27,7 @@ type AppState = {
   lastSyncError: string | null;
   lastSyncedAt: string | null;
   sortMode: SortMode;
+  sortDirection: SortDirection;
   settings: AppSettings;
   setHasHydrated: (value: boolean) => void;
   setOnlineStatus: (value: boolean) => void;
@@ -33,6 +35,7 @@ type AppState = {
   setServerStatus: (status: ServerStatus, error?: string | null) => void;
   setLastSyncedAt: (value: string) => void;
   setSortMode: (value: SortMode) => void;
+  toggleSortDirection: () => void;
   setThemeMode: (value: AppSettings['themeMode']) => void;
   setNotificationDemoMode: (value: boolean) => void;
   createTask: (payload: TaskPayload) => Task;
@@ -106,6 +109,7 @@ export const useAppStore = create<AppState>()(
       lastSyncError: null,
       lastSyncedAt: null,
       sortMode: 'createdAt',
+      sortDirection: 'desc',
       settings: {
         themeMode: 'light',
         notificationDemoMode: true,
@@ -115,7 +119,13 @@ export const useAppStore = create<AppState>()(
       setSyncing: (value) => set({ isSyncing: value }),
       setServerStatus: (serverStatus, error = null) => set({ serverStatus, lastSyncError: error }),
       setLastSyncedAt: (lastSyncedAt) => set({ lastSyncedAt }),
-      setSortMode: (value) => set({ sortMode: value }),
+      setSortMode: (value) =>
+        set({
+          sortMode: value,
+          sortDirection: value === 'createdAt' ? 'desc' : 'asc',
+        }),
+      toggleSortDirection: () =>
+        set((state) => ({ sortDirection: state.sortDirection === 'asc' ? 'desc' : 'asc' })),
       setThemeMode: (value) =>
         set((state) => ({
           settings: {
@@ -403,6 +413,7 @@ export const useAppStore = create<AppState>()(
         history: state.history,
         pendingChanges: state.pendingChanges,
         sortMode: state.sortMode,
+        sortDirection: state.sortDirection,
         settings: state.settings,
       }),
       onRehydrateStorage: () => (state) => {

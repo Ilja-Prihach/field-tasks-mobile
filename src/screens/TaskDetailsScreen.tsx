@@ -1,7 +1,6 @@
 import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import MapView, { Marker } from 'react-native-maps';
 
 import { InfoRow } from '../components/InfoRow';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -9,6 +8,7 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { StatusBadge } from '../components/StatusBadge';
 import { RootStackParamList } from '../app/AppNavigator';
+import { TaskMap } from '../features/location/TaskMap';
 import { cancelTaskNotification, scheduleTaskNotification } from '../features/notifications/notificationService';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
@@ -94,25 +94,11 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
 
       <SectionCard title="Location">
         <InfoRow label="Address" value={task.location.address} />
-        <MapView
+        <TaskMap
+          tasks={[task]}
           style={styles.map}
-          pointerEvents="none"
-          initialRegion={{
-            latitude: task.location.latitude,
-            longitude: task.location.longitude,
-            latitudeDelta: 0.08,
-            longitudeDelta: 0.08,
-          }}
-        >
-          <Marker
-            coordinate={{
-              latitude: task.location.latitude,
-              longitude: task.location.longitude,
-            }}
-            title={task.title}
-            description={task.location.address}
-          />
-        </MapView>
+          interactive={false}
+        />
       </SectionCard>
 
       <SectionCard title="Actions">

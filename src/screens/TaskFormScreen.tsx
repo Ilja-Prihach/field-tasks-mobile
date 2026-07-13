@@ -88,6 +88,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
+  const [showLocationPresets, setShowLocationPresets] = useState(false);
 
   const defaultDueDate = useMemo(
     () => (task ? new Date(task.dueDate) : new Date(Date.now() + 2 * 60 * 60 * 1000)),
@@ -122,7 +123,14 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const watchedDate = watch('dueDate');
   const watchedTime = watch('dueTime');
+  const watchedLatitude = watch('latitude');
+  const watchedLongitude = watch('longitude');
   const pickerValue = parseFormDateTime(watchedDate, watchedTime, defaultDueDate);
+  const selectedLocationPreset = LOCATION_PRESETS.find(
+    (preset) =>
+      preset.latitude === Number(watchedLatitude) &&
+      preset.longitude === Number(watchedLongitude),
+  );
 
   const buildDueDate = (values: FormValues) => {
     return parseFormDateTime(values.dueDate, values.dueTime, defaultDueDate).toISOString();
@@ -289,20 +297,53 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       </SectionCard>
 
       <SectionCard title="Location">
-        <View style={styles.presetRow}>
-          {LOCATION_PRESETS.map((preset) => (
-            <PrimaryButton
-              key={preset.id}
-              label={preset.label}
-              variant="secondary"
-              onPress={() => {
-                setValue('address', preset.address, { shouldValidate: true });
-                setValue('latitude', String(preset.latitude), { shouldValidate: true });
-                setValue('longitude', String(preset.longitude), { shouldValidate: true });
-              }}
-            />
-          ))}
-        </View>
+        <Text style={[styles.fieldLabel, { color: colors.text }]}>Map location</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded: showLocationPresets }}
+          onPress={() => setShowLocationPresets((current) => !current)}
+          style={[
+            styles.locationSelect,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={styles.locationSelectText}>
+            <Text style={[styles.locationSelectTitle, { color: colors.text }]}>
+              {selectedLocationPreset?.label ?? 'Choose a preset'}
+            </Text>
+            <Text style={{ color: colors.textMuted }} numberOfLines={1}>
+              {selectedLocationPreset?.address ?? 'Used only to place the marker'}
+            </Text>
+          </View>
+          <Text style={{ color: colors.textMuted }}>{showLocationPresets ? 'Close' : 'Choose'}</Text>
+        </Pressable>
+        {showLocationPresets ? (
+          <View style={[styles.locationMenu, { borderColor: colors.border }]}>
+            {LOCATION_PRESETS.map((preset) => {
+              const isSelected = selectedLocationPreset?.id === preset.id;
+              return (
+                <Pressable
+                  key={preset.id}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: isSelected }}
+                  onPress={() => {
+                    setValue('address', preset.address, { shouldValidate: true });
+                    setValue('latitude', String(preset.latitude), { shouldValidate: true });
+                    setValue('longitude', String(preset.longitude), { shouldValidate: true });
+                    setShowLocationPresets(false);
+                  }}
+                  style={[
+                    styles.locationOption,
+                    { backgroundColor: isSelected ? colors.surfaceMuted : colors.surface },
+                  ]}
+                >
+                  <Text style={[styles.locationSelectTitle, { color: colors.text }]}>{preset.label}</Text>
+                  <Text style={{ color: colors.textMuted }}>{preset.address}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : null}
         <Controller
           control={control}
           name="address"
@@ -317,7 +358,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           )}
         />
         <Text style={[styles.helperText, { color: colors.textMuted }]}>
-          Choose a preset to place the task marker on the map. Exact coordinates are kept internal.
+          Enter the address shown to users. The preset controls marker placement because external geocoding is not used.
         </Text>
       </SectionCard>
 
@@ -380,8 +421,38 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  presetRow: {
-    gap: 8,
+  fieldLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  locationSelect: {
+    minHeight: 58,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  locationSelectText: {
+    flex: 1,
+    gap: 3,
+  },
+  locationSelectTitle: {
+    fontWeight: '700',
+  },
+  locationMenu: {
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  locationOption: {
+    minHeight: 58,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 3,
   },
   statusRow: {
     flexDirection: 'row',
