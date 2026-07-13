@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
-import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
+import { Alert, Image, Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker, {
+  DateTimePickerAndroid,
+  DateTimePickerChangeEvent,
+} from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -175,22 +178,33 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     return parseFormDateTime(values.dueDate, values.dueTime, defaultDueDate).toISOString();
   };
 
-  const handleDateChange = (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
-    const currentMode = pickerMode;
+  const applyPickerValue = (mode: 'date' | 'time', selectedDate: Date) => {
+    if (mode === 'date') {
+      setValue('dueDate', formatDateOnlyFromDate(selectedDate), { shouldValidate: true });
+    } else {
+      setValue('dueTime', formatTimeOnlyFromDate(selectedDate), { shouldValidate: true });
+    }
+  };
 
-    if (!currentMode) {
+  const handleDateChange = (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
+    if (pickerMode) {
+      applyPickerValue(pickerMode, selectedDate);
+    }
+  };
+
+  const openPicker = (mode: 'date' | 'time') => {
+    if (Platform.OS === 'android') {
+      DateTimePickerAndroid.open({
+        mode,
+        value: pickerValue,
+        is24Hour: true,
+        minimumDate: mode === 'date' ? new Date() : undefined,
+        onValueChange: (_event, selectedDate) => applyPickerValue(mode, selectedDate),
+      });
       return;
     }
 
-    if (currentMode === 'date') {
-      setValue('dueDate', formatDateOnlyFromDate(selectedDate), { shouldValidate: true });
-    } else if (currentMode === 'time') {
-      setValue('dueTime', formatTimeOnlyFromDate(selectedDate), { shouldValidate: true });
-    }
-
-    if (Platform.OS === 'android') {
-      setPickerMode(null);
-    }
+    setPickerMode(mode);
   };
 
   const handlePickImages = async () => {
@@ -347,30 +361,41 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
       <SectionCard title={t('sort_deadline')}>
         <View style={styles.inlineButtons}>
-          <PrimaryButton label={watchedDate} onPress={() => setPickerMode('date')} variant="secondary" />
-          <PrimaryButton label={watchedTime} onPress={() => setPickerMode('time')} variant="secondary" />
+          <PrimaryButton label={watchedDate} onPress={() => openPicker('date')} variant="secondary" />
+          <PrimaryButton label={watchedTime} onPress={() => openPicker('time')} variant="secondary" />
         </View>
         {(errors.dueDate?.message || errors.dueTime?.message) ? (
           <Text style={[styles.errorText, { color: colors.danger }]}>
             {errors.dueDate?.message ?? errors.dueTime?.message}
           </Text>
         ) : null}
-        {pickerMode ? (
-          <View style={styles.pickerCard}>
-            <DateTimePicker
-              mode={pickerMode}
-              value={pickerValue}
-              is24Hour
-              minimumDate={pickerMode === 'date' ? new Date() : undefined}
-              onValueChange={handleDateChange}
-              onDismiss={() => setPickerMode(null)}
-            />
-            {Platform.OS === 'ios' ? (
-              <PrimaryButton label={t('done')} onPress={() => setPickerMode(null)} variant="secondary" />
-            ) : null}
-          </View>
-        ) : null}
       </SectionCard>
+
+      <Modal
+        visible={Platform.OS === 'ios' && pickerMode !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPickerMode(null)}
+      >
+        <Pressable style={styles.pickerBackdrop} onPress={() => setPickerMode(null)}>
+          <Pressable
+            style={[styles.pickerModal, { backgroundColor: colors.surface }]}
+            onPress={(event) => event.stopPropagation()}
+          >
+            {pickerMode ? (
+              <DateTimePicker
+                display="spinner"
+                mode={pickerMode}
+                value={pickerValue}
+                is24Hour
+                minimumDate={pickerMode === 'date' ? new Date() : undefined}
+                onValueChange={handleDateChange}
+              />
+            ) : null}
+            <PrimaryButton label={t('done')} onPress={() => setPickerMode(null)} />
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <SectionCard title={t('location')}>
         <Text style={[styles.locationIntro, { color: colors.textMuted }]}>{t('search_any_city')}</Text>
@@ -502,7 +527,17 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 12,
   },
-  pickerCard: {
+  pickerBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.42)',
+    justifyContent: 'flex-end',
+  },
+  pickerModal: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 18,
+    paddingTop: 12,
+    paddingBottom: 28,
     gap: 8,
   },
   helperText: {
