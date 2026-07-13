@@ -7,19 +7,25 @@ import { useAppStore } from '../storage/useAppStore';
 
 export const useAppBootstrap = () => {
   const netInfo = useNetInfo();
+  const hasHydrated = useAppStore((state) => state.hasHydrated);
+  const pendingRevision = useAppStore((state) =>
+    state.pendingChanges.map((change) => `${change.taskId}:${change.updatedAt}`).join('|'),
+  );
   const setOnlineStatus = useAppStore((state) => state.setOnlineStatus);
 
   useEffect(() => {
-    setOnlineStatus(Boolean(netInfo.isConnected));
-  }, [netInfo.isConnected, setOnlineStatus]);
+    const hasInternet = netInfo.isConnected === true && netInfo.isInternetReachable !== false;
+    setOnlineStatus(hasInternet);
+  }, [netInfo.isConnected, netInfo.isInternetReachable, setOnlineStatus]);
 
   useEffect(() => {
-    void configureNotificationChannel();
+    void configureNotificationChannel().catch(() => undefined);
   }, []);
 
   useEffect(() => {
-    if (netInfo.isConnected) {
-      void syncPendingChanges();
+    const hasInternet = netInfo.isConnected === true && netInfo.isInternetReachable !== false;
+    if (hasHydrated && hasInternet && pendingRevision) {
+      void syncPendingChanges().catch(() => undefined);
     }
-  }, [netInfo.isConnected]);
+  }, [hasHydrated, netInfo.isConnected, netInfo.isInternetReachable, pendingRevision]);
 };

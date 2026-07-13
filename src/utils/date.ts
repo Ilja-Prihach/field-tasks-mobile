@@ -9,18 +9,22 @@ const formatOption: Intl.DateTimeFormatOptions = {
 export const formatDateTime = (value: string) =>
   new Intl.DateTimeFormat('en-GB', formatOption).format(new Date(value));
 
-export const formatDateOnly = (value: string) =>
+export const formatDateOnlyFromDate = (value: Date) =>
   new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
-  }).format(new Date(value));
+  }).format(value);
 
-export const formatTimeOnly = (value: string) =>
+export const formatTimeOnlyFromDate = (value: Date) =>
   new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
-  }).format(new Date(value));
+  }).format(value);
+
+export const formatDateOnly = (value: string) => formatDateOnlyFromDate(new Date(value));
+
+export const formatTimeOnly = (value: string) => formatTimeOnlyFromDate(new Date(value));
 
 export const getDueWarning = (dueDate: string) => {
   const diffMs = new Date(dueDate).getTime() - Date.now();

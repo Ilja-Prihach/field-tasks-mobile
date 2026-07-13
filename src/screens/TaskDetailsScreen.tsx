@@ -1,6 +1,7 @@
 import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import MapView, { Marker } from 'react-native-maps';
 
 import { InfoRow } from '../components/InfoRow';
 import { PrimaryButton } from '../components/PrimaryButton';
@@ -12,6 +13,7 @@ import { cancelTaskNotification, scheduleTaskNotification } from '../features/no
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { formatDateTime } from '../utils/date';
+import { getSyncStatusLabel } from '../utils/task';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetails'>;
 
@@ -19,11 +21,19 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
   const colors = useThemeColors();
   const [brokenPreviewIds, setBrokenPreviewIds] = useState<string[]>([]);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
-  const task = useAppStore((state) => state.tasks.find((item) => item.id === route.params.taskId));
-  const history = useAppStore((state) => state.history.filter((item) => item.taskId === route.params.taskId));
+  const tasks = useAppStore((state) => state.tasks);
+  const allHistory = useAppStore((state) => state.history);
   const updateTaskStatus = useAppStore((state) => state.updateTaskStatus);
   const deleteTask = useAppStore((state) => state.deleteTask);
   const setTaskNotification = useAppStore((state) => state.setTaskNotification);
+  const task = useMemo(
+    () => tasks.find((item) => item.id === route.params.taskId),
+    [route.params.taskId, tasks],
+  );
+  const history = useMemo(
+    () => allHistory.filter((item) => item.taskId === route.params.taskId),
+    [allHistory, route.params.taskId],
+  );
 
   if (!task) {
     return (
@@ -60,7 +70,11 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          await cancelTaskNotification(task.notificationId);
+          try {
+            await cancelTaskNotification(task.notificationId);
+          } catch {
+            // Notification cleanup must not block local deletion.
+          }
           deleteTask(task.id);
           navigation.goBack();
         },
@@ -75,12 +89,30 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
         <StatusBadge status={task.status} />
         <InfoRow label="Description" value={task.description} />
         <InfoRow label="Due" value={formatDateTime(task.dueDate)} />
+        <InfoRow label="Sync" value={getSyncStatusLabel(task.syncStatus)} />
+      </SectionCard>
+
+      <SectionCard title="Location">
         <InfoRow label="Address" value={task.location.address} />
-        <InfoRow
-          label="Coordinates"
-          value={`${task.location.latitude.toFixed(4)}, ${task.location.longitude.toFixed(4)}`}
-        />
-        <InfoRow label="Sync" value={task.syncStatus} />
+        <MapView
+          style={styles.map}
+          pointerEvents="none"
+          initialRegion={{
+            latitude: task.location.latitude,
+            longitude: task.location.longitude,
+            latitudeDelta: 0.08,
+            longitudeDelta: 0.08,
+          }}
+        >
+          <Marker
+            coordinate={{
+              latitude: task.location.latitude,
+              longitude: task.location.longitude,
+            }}
+            title={task.title}
+            description={task.location.address}
+          />
+        </MapView>
       </SectionCard>
 
       <SectionCard title="Actions">
@@ -162,6 +194,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  map: {
+    width: '100%',
+    height: 180,
+    borderRadius: 12,
   },
   attachmentItem: {
     width: 100,

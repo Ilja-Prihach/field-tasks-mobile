@@ -7,6 +7,7 @@ Expo + React Native + TypeScript MVP for the SalesAutomators RN test task. The a
 ## Main Features
 
 - Create and edit tasks with required title, description, due date/time, address, status and optional image attachments.
+- Keep the location flow simple for the reviewer: manual address entry plus preset map coordinates, without exposing raw coordinates in the normal UI.
 - Validate forms with `react-hook-form` + `zod` and show visible user-facing errors.
 - View task list with empty state, sorting by `createdAt`, `dueDate`, `status` and task sync status.
 - Open task details with full data, attachment preview, location, history, status updates and delete action.
@@ -54,29 +55,54 @@ src/
 
 ## Install And Run
 
+Install once:
+
 ```bash
 npm install
 cp .env.example .env
+npx expo prebuild
+```
+
+For simulator development, use three terminals:
+
+```bash
+# Terminal 1: mock API
 npm run server
+
+# Terminal 2: Metro for the native development build
+npx expo start --dev-client -c
+
+# Terminal 3: choose one platform
+npm run android
+npm run ios
 ```
 
-In another terminal:
+Run only one command from the final two lines at a time. Both simulators can stay installed and connect to the same Metro process.
+
+For Android emulator, use:
 
 ```bash
-npm start
+EXPO_PUBLIC_API_BASE_URL_ANDROID=http://10.0.2.2:3001
 ```
 
-For Android emulator, the default API URL already points to `http://10.0.2.2:3001`.
-
-For a physical Android device, set `EXPO_PUBLIC_API_BASE_URL` to your machine LAN IP, for example:
+For iOS simulator, use:
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL=http://192.168.0.20:3001
+EXPO_PUBLIC_API_BASE_URL_IOS=http://localhost:3001
+```
+
+The committed `.env.example` already contains both simulator values. Do not set the shared `EXPO_PUBLIC_API_BASE_URL` for simulator work because Android and iOS require different hostnames.
+
+For a physical device, point the matching platform variable to your machine LAN IP, for example:
+
+```bash
+EXPO_PUBLIC_API_BASE_URL_ANDROID=http://192.168.0.20:3001
+EXPO_PUBLIC_API_BASE_URL_IOS=http://192.168.0.20:3001
 ```
 
 ## Mock Server
 
-The project uses `json-server` with [data/db.json](/Users/ilja_prihach/Desktop/RN_test_task/data/db.json).
+The project uses `json-server` with [data/db.json](data/db.json).
 
 Run it with:
 
@@ -94,6 +120,8 @@ PUT    /tasks/:id
 DELETE /tasks/:id
 ```
 
+Only one process should listen on port `3001`. If Android reports an HTML response instead of JSON, check for a port conflict with `lsof -nP -iTCP:3001 -sTCP:LISTEN`, stop the unrelated process and restart `npm run server`.
+
 ## Architecture Notes
 
 ### Storage
@@ -106,8 +134,16 @@ DELETE /tasks/:id
 
 - Offline changes are queued as simple `upsert` or `delete` operations.
 - When online, the app pushes pending changes to `json-server`.
+- Sync resolution is endpoint-based:
+  - new local task -> `POST /tasks`
+  - existing remote task -> `PUT /tasks/:serverId`
+  - delete missing remote task -> treated as already synced
+- `json-server` 1.x generates its own ID on `POST`. The app keeps a stable local task ID for navigation/history and persists the returned server ID for later `PUT` and `DELETE` requests. A `clientId` field reconnects the two sides after restart.
 - Conflict strategy is **last write wins**: the latest local update overwrites older server state.
 - Remote tasks are merged back only when there is no local pending change for the same task.
+- Repeated identical sync errors for the same unchanged pending operation are deduplicated in local history to avoid log spam.
+- Manual sync from Settings shows a compact success/failure summary instead of silently flipping internal flags.
+- Manual sync also pulls remote records even when the local queue is empty; automatic sync runs after hydration, network restoration and every new local mutation.
 
 ### Notifications
 
@@ -118,8 +154,9 @@ DELETE /tasks/:id
 ### Map / Location
 
 - No geocoding is used.
-- The user enters manual address text and manual coordinates.
+- The user enters a manual address and can use preset coordinates for stable map placement.
 - Preset locations are available to speed up testing and ensure visible map markers.
+- Coordinates are kept internal for map placement; normal task screens focus on address and map preview instead of raw latitude/longitude.
 
 ### State Management
 
@@ -155,7 +192,7 @@ npm run typecheck
 - Coordinates are entered manually because external geocoding is intentionally not used.
 - Sync is intentionally simple and optimized for assignment scope, not for multi-user collaboration.
 - Attachment files rely on local device URIs; if the underlying file is removed by the OS/user, the app handles the missing preview gracefully but cannot restore the asset.
-- Local notifications were implemented for Android-focused review; behavior on iOS was not the target.
+- Local notification scheduling is implemented on both platforms, but exact delivery timing is controlled by the operating system and should be verified with the 45-second demo mode in a development or release build.
 - No automated tests were added in this MVP to keep focus on required runtime functionality.
 
 ## Video Demo Checklist

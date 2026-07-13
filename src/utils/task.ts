@@ -1,4 +1,4 @@
-import { SortMode, Task, TaskStatus } from '../types/task';
+import { SortMode, SyncStatus, Task, TaskStatus } from '../types/task';
 
 const statusOrder: Record<TaskStatus, number> = {
   new: 0,
@@ -39,5 +39,16 @@ export const getStatusLabel = (status: TaskStatus) => {
       return 'Completed';
     case 'cancelled':
       return 'Cancelled';
+  }
+};
+
+export const getSyncStatusLabel = (status: SyncStatus) => {
+  switch (status) {
+    case 'pending':
+      return 'Waiting for sync';
+    case 'failed':
+      return 'Sync failed';
+    case 'synced':
+      return 'Synced';
   }
 };

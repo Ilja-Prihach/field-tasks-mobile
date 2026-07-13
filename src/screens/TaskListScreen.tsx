@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,16 +11,17 @@ import { RootStackParamList } from '../app/AppNavigator';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { formatDateTime } from '../utils/date';
-import { getTaskShortLocation, sortTasks } from '../utils/task';
+import { getSyncStatusLabel, getTaskShortLocation, sortTasks } from '../utils/task';
 
 const sortOptions = ['createdAt', 'dueDate', 'status'] as const;
 
 export const TaskListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
-  const tasks = useAppStore((state) => sortTasks(state.tasks, state.sortMode));
+  const rawTasks = useAppStore((state) => state.tasks);
   const sortMode = useAppStore((state) => state.sortMode);
   const setSortMode = useAppStore((state) => state.setSortMode);
+  const tasks = useMemo(() => sortTasks(rawTasks, sortMode), [rawTasks, sortMode]);
 
   return (
     <ScreenContainer>
@@ -79,7 +81,7 @@ export const TaskListScreen = () => {
                     },
                   ]}
                 >
-                  Sync: {item.syncStatus}
+                  {getSyncStatusLabel(item.syncStatus)}
                 </Text>
               </SectionCard>
             </Pressable>

@@ -1,3 +1,21 @@
 {
-  "tasks": []
+  "tasks": [
+    {
+      "id": "sample-server-task",
+      "clientId": "sample-task",
+      "title": "Inspect equipment",
+      "description": "Check the field equipment and record the result.",
+      "dueDate": "2027-01-15T09:00:00.000Z",
+      "status": "new",
+      "location": {
+        "address": "Independence Ave 10, Minsk",
+        "latitude": 53.9006,
+        "longitude": 27.559
+      },
+      "attachments": [],
+      "createdAt": "2026-07-13T09:00:00.000Z",
+      "updatedAt": "2026-07-13T09:00:00.000Z",
+      "syncStatus": "synced"
+    }
+  ]
 }

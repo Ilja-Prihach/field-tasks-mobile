@@ -1,4 +1,5 @@
 import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 import { NotificationScheduleResult, Task } from '../../types/task';
 
@@ -21,6 +22,10 @@ export const requestNotificationPermission = async () => {
 };
 
 export const configureNotificationChannel = async () => {
+  if (Platform.OS !== 'android') {
+    return;
+  }
+
   await Notifications.setNotificationChannelAsync('task-reminders', {
     name: 'Task reminders',
     importance: Notifications.AndroidImportance.HIGH,
@@ -59,6 +64,17 @@ export const scheduleTaskNotification = async (
       ? 60
       : Math.max(1, Math.floor((scheduledFor - Date.now()) / 1000));
 
+  const trigger: Notifications.TimeIntervalTriggerInput = Platform.OS === 'android'
+    ? {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds,
+        channelId: 'task-reminders',
+      }
+    : {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds,
+      };
+
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
       title: `Upcoming task: ${task.title}`,
@@ -68,11 +84,7 @@ export const scheduleTaskNotification = async (
       })}`,
       sound: true,
     },
-    trigger: {
-      type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      seconds,
-      channelId: 'task-reminders',
-    },
+    trigger,
   });
 
   return {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Alert, Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
+import { Alert, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import DateTimePicker, { DateTimePickerChangeEvent } from '@react-native-community/datetimepicker';
 import * as ImagePicker from 'expo-image-picker';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -21,7 +21,12 @@ import { LOCATION_PRESETS } from '../features/location/presets';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { TaskAttachment, TaskStatus } from '../types/task';
-import { formatDateOnly, formatTimeOnly } from '../utils/date';
+import {
+  formatDateOnly,
+  formatDateOnlyFromDate,
+  formatTimeOnly,
+  formatTimeOnlyFromDate,
+} from '../utils/date';
 import { createId } from '../utils/id';
 
 const formSchema = z.object({
@@ -74,16 +79,20 @@ const parseFormDateTime = (dueDate: string, dueTime: string, fallback: Date) => 
 export const TaskFormScreen = ({ navigation, route }: Props) => {
   const colors = useThemeColors();
   const taskId = route.params?.taskId;
-  const task = useAppStore((state) => state.tasks.find((item) => item.id === taskId));
+  const tasks = useAppStore((state) => state.tasks);
   const createTask = useAppStore((state) => state.createTask);
   const editTask = useAppStore((state) => state.editTask);
   const setTaskNotification = useAppStore((state) => state.setTaskNotification);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
+  const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks]);
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
 
-  const defaultDueDate = task ? new Date(task.dueDate) : new Date(Date.now() + 2 * 60 * 60 * 1000);
+  const defaultDueDate = useMemo(
+    () => (task ? new Date(task.dueDate) : new Date(Date.now() + 2 * 60 * 60 * 1000)),
+    [task],
+  );
 
   const defaultValues = useMemo<FormValues>(
     () => ({
@@ -103,6 +112,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     control,
     formState: { errors, isSubmitting },
     handleSubmit,
+    setError,
     setValue,
     watch,
   } = useForm<FormValues>({
@@ -118,83 +128,90 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     return parseFormDateTime(values.dueDate, values.dueTime, defaultDueDate).toISOString();
   };
 
-  const handleDateChange = (_event: DateTimePickerEvent, selectedDate?: Date) => {
-    setPickerMode(null);
-    if (!selectedDate) {
+  const handleDateChange = (_event: DateTimePickerChangeEvent, selectedDate: Date) => {
+    const currentMode = pickerMode;
+
+    if (!currentMode) {
       return;
     }
 
-    if (_event.type === 'dismissed') {
-      return;
+    if (currentMode === 'date') {
+      setValue('dueDate', formatDateOnlyFromDate(selectedDate), { shouldValidate: true });
+    } else if (currentMode === 'time') {
+      setValue('dueTime', formatTimeOnlyFromDate(selectedDate), { shouldValidate: true });
     }
 
-    if (_event.type === 'set') {
-      if (pickerMode === 'date') {
-        setValue('dueDate', formatDateOnly(selectedDate.toISOString()), { shouldValidate: true });
-      } else if (pickerMode === 'time') {
-        setValue('dueTime', formatTimeOnly(selectedDate.toISOString()), { shouldValidate: true });
-      }
+    if (Platform.OS === 'android') {
+      setPickerMode(null);
     }
   };
 
   const handlePickImages = async () => {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      Alert.alert('Permission required', 'Please allow gallery access to attach images.');
-      return;
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        Alert.alert('Permission required', 'Please allow gallery access to attach images.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsMultipleSelection: true,
+        quality: 0.7,
+        selectionLimit: 5,
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const nextAttachments = result.assets.map((asset) => ({
+        id: createId('attachment'),
+        uri: asset.uri,
+        fileName: asset.fileName ?? `image-${Date.now()}.jpg`,
+        mimeType: asset.mimeType ?? 'image/jpeg',
+        size: asset.fileSize,
+      }));
+
+      setAttachments((prev) => [...prev, ...nextAttachments]);
+    } catch (error) {
+      Alert.alert('Image picker failed', error instanceof Error ? error.message : 'Unable to select images.');
     }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsMultipleSelection: true,
-      quality: 0.7,
-      selectionLimit: 5,
-    });
-
-    if (result.canceled) {
-      return;
-    }
-
-    const nextAttachments = result.assets.map((asset) => ({
-      id: createId('attachment'),
-      uri: asset.uri,
-      fileName: asset.fileName ?? `image-${Date.now()}.jpg`,
-      mimeType: asset.mimeType ?? 'image/jpeg',
-      size: asset.fileSize,
-    }));
-
-    setAttachments((prev) => [...prev, ...nextAttachments]);
   };
 
   const onSubmit = handleSubmit(async (values) => {
+    const dueDate = buildDueDate(values);
+    if (new Date(dueDate).getTime() <= Date.now()) {
+      setError('dueDate', { message: 'Deadline must be in the future' });
+      return;
+    }
+
+    const payload = {
+      title: values.title.trim(),
+      description: values.description.trim(),
+      dueDate,
+      status: values.status,
+      location: {
+        address: values.address.trim(),
+        latitude: Number(values.latitude),
+        longitude: Number(values.longitude),
+      },
+      attachments,
+    };
+
+    const savedTask = task ? editTask(task.id, payload) : createTask(payload);
+    if (!savedTask) {
+      Alert.alert('Save failed', 'Task could not be saved.');
+      return;
+    }
+
     try {
       const permission = await requestNotificationPermission();
       if (!permission.granted) {
         Alert.alert('Notifications disabled', 'Task will be saved, but reminder permission was not granted.');
-      }
-
-      const dueDate = buildDueDate(values);
-      const payload = {
-        title: values.title.trim(),
-        description: values.description.trim(),
-        dueDate,
-        status: values.status,
-        location: {
-          address: values.address.trim(),
-          latitude: Number(values.latitude),
-          longitude: Number(values.longitude),
-        },
-        attachments,
-      };
-
-      const savedTask = task ? editTask(task.id, payload) : createTask(payload);
-      if (!savedTask) {
-        Alert.alert('Save failed', 'Task could not be saved.');
-        return;
-      }
-
-      if (permission.granted) {
+      } else {
         await cancelTaskNotification(task?.notificationId);
+        setTaskNotification(savedTask.id, null);
         const result = await scheduleTaskNotification(savedTask, notificationDemoMode);
         setTaskNotification(savedTask.id, result?.notificationId ?? null);
         if (result?.warning) {
@@ -202,10 +219,14 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         }
       }
 
-      navigation.replace('TaskDetails', { taskId: savedTask.id });
     } catch (error) {
-      Alert.alert('Save failed', error instanceof Error ? error.message : 'Unexpected error');
+      Alert.alert(
+        'Task saved without reminder',
+        error instanceof Error ? error.message : 'Notification could not be scheduled.',
+      );
     }
+
+    navigation.replace('TaskDetails', { taskId: savedTask.id });
   });
 
   return (
@@ -250,6 +271,21 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
             {errors.dueDate?.message ?? errors.dueTime?.message}
           </Text>
         ) : null}
+        {pickerMode ? (
+          <View style={styles.pickerCard}>
+            <DateTimePicker
+              mode={pickerMode}
+              value={pickerValue}
+              is24Hour
+              minimumDate={pickerMode === 'date' ? new Date() : undefined}
+              onValueChange={handleDateChange}
+              onDismiss={() => setPickerMode(null)}
+            />
+            {Platform.OS === 'ios' ? (
+              <PrimaryButton label="Done" onPress={() => setPickerMode(null)} variant="secondary" />
+            ) : null}
+          </View>
+        ) : null}
       </SectionCard>
 
       <SectionCard title="Location">
@@ -280,32 +316,9 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
             />
           )}
         />
-        <Controller
-          control={control}
-          name="latitude"
-          render={({ field: { onChange, value } }) => (
-            <FormField
-              label="Latitude"
-              value={String(value)}
-              onChangeText={onChange}
-              error={errors.latitude?.message}
-              keyboardType="numeric"
-            />
-          )}
-        />
-        <Controller
-          control={control}
-          name="longitude"
-          render={({ field: { onChange, value } }) => (
-            <FormField
-              label="Longitude"
-              value={String(value)}
-              onChangeText={onChange}
-              error={errors.longitude?.message}
-              keyboardType="numeric"
-            />
-          )}
-        />
+        <Text style={[styles.helperText, { color: colors.textMuted }]}>
+          Choose a preset to place the task marker on the map. Exact coordinates are kept internal.
+        </Text>
       </SectionCard>
 
       <SectionCard title="Status">
@@ -348,15 +361,6 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       </SectionCard>
 
       <PrimaryButton label={task ? 'Save changes' : 'Create task'} onPress={onSubmit} disabled={isSubmitting} />
-
-      {pickerMode ? (
-        <DateTimePicker
-          mode={pickerMode}
-          value={pickerValue}
-          is24Hour
-          onChange={handleDateChange}
-        />
-      ) : null}
     </ScreenContainer>
   );
 };
@@ -368,6 +372,13 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 12,
+  },
+  pickerCard: {
+    gap: 8,
+  },
+  helperText: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   presetRow: {
     gap: 8,

@@ -2,6 +2,7 @@ export type TaskStatus = 'new' | 'in_progress' | 'completed' | 'cancelled';
 export type SyncStatus = 'pending' | 'synced' | 'failed';
 export type SortMode = 'createdAt' | 'dueDate' | 'status';
 export type ThemeMode = 'light' | 'dark';
+export type ServerStatus = 'unknown' | 'reachable' | 'unreachable';
 
 export type TaskAttachment = {
   id: string;
@@ -19,6 +20,7 @@ export type TaskLocation = {
 
 export type Task = {
   id: string;
+  remoteId?: string;
   title: string;
   description: string;
   dueDate: string;
@@ -51,9 +53,12 @@ export type TaskHistoryItem = {
 
 export type PendingChange = {
   taskId: string;
+  remoteId?: string;
   type: 'upsert' | 'delete';
   payload?: Task;
   updatedAt: string;
+  lastAttemptedAt?: string;
+  lastAttemptError?: string | null;
 };
 
 export type TaskPayload = {

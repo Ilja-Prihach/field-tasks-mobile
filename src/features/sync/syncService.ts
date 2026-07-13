@@ -1,61 +1,211 @@
-import { tasksApi } from '../../api/tasksApi';
+import { ApiError, RemoteTask, tasksApi, toLocalTask } from '../../api/tasksApi';
 import { useAppStore } from '../../storage/useAppStore';
+import { PendingChange } from '../../types/task';
 
-export const syncPendingChanges = async () => {
-  const store = useAppStore.getState();
-  if (store.isSyncing || !store.isOnline || !store.pendingChanges.length) {
+let syncRunInFlight: Promise<SyncSummary> | null = null;
+
+export type SyncSummary = {
+  attempted: number;
+  synced: number;
+  failed: number;
+  skipped: number;
+};
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : 'Unexpected sync error.';
+
+const addSyncHistoryEntry = (
+  change: PendingChange,
+  actionType: 'sync_started' | 'synced' | 'sync_failed',
+  description: string,
+) => {
+  const latestMatchingEntry = useAppStore
+    .getState()
+    .history.find((item) => item.taskId === change.taskId && item.actionType === actionType);
+
+  // One unchanged queue operation gets at most one event of each sync type.
+  if (
+    latestMatchingEntry?.description === description &&
+    new Date(latestMatchingEntry.timestamp).getTime() >= new Date(change.updatedAt).getTime()
+  ) {
     return;
   }
 
-  store.setSyncing(true);
+  useAppStore.getState().addHistoryItem({
+    taskId: change.taskId,
+    actionType,
+    description,
+  });
+};
+
+const findRemoteId = (change: PendingChange, remoteTasks: RemoteTask[]) => {
+  if (change.remoteId ?? change.payload?.remoteId) {
+    return change.remoteId ?? change.payload?.remoteId;
+  }
+
+  const byClientId = remoteTasks.find((task) => task.clientId === change.taskId);
+  if (byClientId) {
+    return byClientId.id;
+  }
+
+  // Recover records created by the older sync implementation, before clientId was sent.
+  const legacyMatch = remoteTasks.find(
+    (task) =>
+      !task.clientId &&
+      task.createdAt === change.payload?.createdAt &&
+      task.title === change.payload?.title,
+  );
+  return legacyMatch?.id;
+};
+
+const syncUpsert = async (change: PendingChange, remoteId?: string) => {
+  if (!change.payload) {
+    throw new Error(`Local sync payload is missing for task ${change.taskId}.`);
+  }
+
+  if (!remoteId) {
+    const created = await tasksApi.createTask(change.payload);
+    useAppStore.getState().setTaskRemoteId(change.taskId, created.id);
+    return created.id;
+  }
 
   try {
-    for (const change of useAppStore.getState().pendingChanges) {
-      useAppStore.getState().addHistoryItem({
-        taskId: change.taskId,
-        actionType: 'sync_started',
-        description: `Sync started for task ${change.taskId}.`,
-      });
+    await tasksApi.updateTask(change.payload, remoteId);
+    useAppStore.getState().setTaskRemoteId(change.taskId, remoteId);
+    return remoteId;
+  } catch (error) {
+    // The record may disappear between GET /tasks and PUT /tasks/:id.
+    if (error instanceof ApiError && error.status === 404) {
+      const created = await tasksApi.createTask(change.payload);
+      useAppStore.getState().setTaskRemoteId(change.taskId, created.id);
+      return created.id;
+    }
+    throw error;
+  }
+};
 
+const syncDelete = async (change: PendingChange, remoteId?: string) => {
+  if (!remoteId) {
+    return;
+  }
+
+  try {
+    await tasksApi.deleteTask(remoteId);
+  } catch (error) {
+    // Delete is idempotent: an already missing server record is a successful result.
+    if (!(error instanceof ApiError) || error.status !== 404) {
+      throw error;
+    }
+  }
+};
+
+const runSync = async (pullRemote: boolean): Promise<SyncSummary> => {
+  const initialState = useAppStore.getState();
+  const changes = [...initialState.pendingChanges];
+
+  if (!initialState.isOnline || (!changes.length && !pullRemote)) {
+    return { attempted: 0, synced: 0, failed: 0, skipped: changes.length };
+  }
+
+  initialState.setSyncing(true);
+  const startedAt = new Date().toISOString();
+
+  for (const change of changes) {
+    initialState.updatePendingChangeAttempt(change.taskId, { attemptedAt: startedAt, error: null });
+    if (!change.lastAttemptedAt || change.lastAttemptedAt < change.updatedAt) {
+      addSyncHistoryEntry(change, 'sync_started', `Sync started for task ${change.taskId}.`);
+    }
+  }
+
+  let synced = 0;
+  let failed = 0;
+
+  try {
+    const remoteTasks = await tasksApi.getTasks();
+    initialState.setServerStatus('reachable');
+    useAppStore.getState().mergeRemoteTasks(remoteTasks.map(toLocalTask));
+
+    for (const change of changes) {
       try {
+        const remoteId = findRemoteId(change, remoteTasks);
         if (change.type === 'delete') {
-          try {
-            await tasksApi.deleteTask(change.taskId);
-          } catch (error) {
-            if (!(error instanceof Error) || !error.message.includes('404')) {
-              throw error;
-            }
-          }
-        } else if (change.payload) {
-          try {
-            await tasksApi.getTask(change.taskId);
-            await tasksApi.updateTask(change.payload);
-          } catch {
-            await tasksApi.createTask(change.payload);
+          await syncDelete(change, remoteId);
+        } else {
+          const syncedRemoteId = await syncUpsert(change, remoteId);
+          if (!remoteId) {
+            remoteTasks.push({ ...change.payload!, id: syncedRemoteId, clientId: change.taskId });
           }
         }
 
-        useAppStore.getState().markTaskSyncStatus(change.taskId, 'synced');
-        useAppStore.getState().removePendingChange(change.taskId);
-        useAppStore.getState().addHistoryItem({
-          taskId: change.taskId,
-          actionType: 'synced',
-          description: `Task ${change.taskId} synced successfully.`,
-        });
+        const currentChange = useAppStore
+          .getState()
+          .pendingChanges.find((item) => item.taskId === change.taskId);
+
+        // Do not remove a newer edit that was queued while this request was running.
+        if (currentChange?.updatedAt === change.updatedAt) {
+          useAppStore.getState().removePendingChange(change.taskId);
+          addSyncHistoryEntry(change, 'synced', `Task ${change.taskId} synced successfully.`);
+          synced += 1;
+        }
       } catch (error) {
-        useAppStore.getState().markTaskSyncStatus(change.taskId, 'failed');
-        useAppStore.getState().addHistoryItem({
-          taskId: change.taskId,
-          actionType: 'sync_failed',
-          description:
-            error instanceof Error ? error.message : `Sync failed for task ${change.taskId}.`,
-        });
+        const errorMessage = getErrorMessage(error);
+        useAppStore.getState().setServerStatus('reachable', errorMessage);
+        const currentChange = useAppStore
+          .getState()
+          .pendingChanges.find((item) => item.taskId === change.taskId);
+
+        if (currentChange?.updatedAt === change.updatedAt) {
+          useAppStore.getState().updatePendingChangeAttempt(change.taskId, {
+            attemptedAt: startedAt,
+            error: errorMessage,
+          });
+          addSyncHistoryEntry(change, 'sync_failed', errorMessage);
+          failed += 1;
+        }
       }
     }
 
-    const remoteTasks = await tasksApi.getTasks();
-    useAppStore.getState().mergeRemoteTasks(remoteTasks);
+    if (synced > 0) {
+      useAppStore.getState().setLastSyncedAt(new Date().toISOString());
+    }
+
+    return { attempted: changes.length, synced, failed, skipped: changes.length - synced - failed };
+  } catch (error) {
+    const errorMessage = getErrorMessage(error);
+    useAppStore.getState().setServerStatus('unreachable', errorMessage);
+
+    for (const change of changes) {
+      const currentChange = useAppStore
+        .getState()
+        .pendingChanges.find((item) => item.taskId === change.taskId);
+
+      if (currentChange?.updatedAt === change.updatedAt) {
+        useAppStore.getState().updatePendingChangeAttempt(change.taskId, {
+          attemptedAt: startedAt,
+          error: errorMessage,
+        });
+        addSyncHistoryEntry(change, 'sync_failed', errorMessage);
+        failed += 1;
+      }
+    }
+
+    return { attempted: changes.length, synced: 0, failed, skipped: changes.length - failed };
   } finally {
     useAppStore.getState().setSyncing(false);
+  }
+};
+
+export const syncPendingChanges = async (
+  options: { pullRemote?: boolean } = {},
+): Promise<SyncSummary> => {
+  if (syncRunInFlight) {
+    return syncRunInFlight;
+  }
+
+  syncRunInFlight = runSync(options.pullRemote ?? false);
+  try {
+    return await syncRunInFlight;
+  } finally {
+    syncRunInFlight = null;
   }
 };

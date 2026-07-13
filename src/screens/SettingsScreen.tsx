@@ -7,11 +7,15 @@ import { SectionCard } from '../components/SectionCard';
 import { syncPendingChanges } from '../features/sync/syncService';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
+import { formatDateTime } from '../utils/date';
 
 export const SettingsScreen = () => {
   const colors = useThemeColors();
   const isOnline = useAppStore((state) => state.isOnline);
   const isSyncing = useAppStore((state) => state.isSyncing);
+  const serverStatus = useAppStore((state) => state.serverStatus);
+  const lastSyncError = useAppStore((state) => state.lastSyncError);
+  const lastSyncedAt = useAppStore((state) => state.lastSyncedAt);
   const themeMode = useAppStore((state) => state.settings.themeMode);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
   const pendingChanges = useAppStore((state) => state.pendingChanges.length);
@@ -39,15 +43,52 @@ export const SettingsScreen = () => {
 
       <SectionCard title="Sync">
         <Text style={{ color: colors.textMuted }}>Server: {API_BASE_URL}</Text>
-        <Text style={{ color: colors.textMuted }}>Online: {String(isOnline)}</Text>
-        <Text style={{ color: colors.textMuted }}>Syncing: {String(isSyncing)}</Text>
+        <Text style={{ color: colors.textMuted }}>Network: {isOnline ? 'available' : 'offline'}</Text>
+        <Text
+          style={{
+            color:
+              serverStatus === 'reachable'
+                ? colors.success
+                : serverStatus === 'unreachable'
+                  ? colors.danger
+                  : colors.textMuted,
+          }}
+        >
+          Mock server: {serverStatus}
+        </Text>
+        <Text style={{ color: colors.textMuted }}>Sync: {isSyncing ? 'in progress' : 'idle'}</Text>
         <Text style={{ color: colors.textMuted }}>Pending changes: {pendingChanges}</Text>
+        {lastSyncedAt ? (
+          <Text style={{ color: colors.textMuted }}>Last successful sync: {formatDateTime(lastSyncedAt)}</Text>
+        ) : null}
+        {lastSyncError ? <Text style={{ color: colors.danger }}>{lastSyncError}</Text> : null}
         <PrimaryButton
-          label="Run sync now"
+          label={isSyncing ? 'Syncing...' : 'Run sync now'}
+          disabled={isSyncing || !isOnline}
           onPress={() =>
-            void syncPendingChanges().catch((error) =>
-              Alert.alert('Sync failed', error instanceof Error ? error.message : 'Unexpected error'),
-            )
+            void syncPendingChanges({ pullRemote: true })
+              .then((summary) => {
+                if (!summary.attempted && !summary.failed) {
+                  Alert.alert(
+                    'Sync status',
+                    isOnline ? 'Nothing is waiting for sync right now.' : 'No internet connection.',
+                  );
+                  return;
+                }
+
+                if (!summary.failed) {
+                  Alert.alert('Sync completed', `${summary.synced} task(s) synced successfully.`);
+                  return;
+                }
+
+                Alert.alert(
+                  'Sync finished with issues',
+                  `${summary.synced} synced, ${summary.failed} failed. Check History for details.`,
+                );
+              })
+              .catch((error) =>
+                Alert.alert('Sync failed', error instanceof Error ? error.message : 'Unexpected error'),
+              )
           }
         />
       </SectionCard>

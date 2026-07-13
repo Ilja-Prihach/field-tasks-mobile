@@ -6,6 +6,7 @@ import { createId } from '../utils/id';
 import {
   AppSettings,
   PendingChange,
+  ServerStatus,
   SortMode,
   SyncStatus,
   Task,
@@ -21,11 +22,16 @@ type AppState = {
   pendingChanges: PendingChange[];
   isOnline: boolean;
   isSyncing: boolean;
+  serverStatus: ServerStatus;
+  lastSyncError: string | null;
+  lastSyncedAt: string | null;
   sortMode: SortMode;
   settings: AppSettings;
   setHasHydrated: (value: boolean) => void;
   setOnlineStatus: (value: boolean) => void;
   setSyncing: (value: boolean) => void;
+  setServerStatus: (status: ServerStatus, error?: string | null) => void;
+  setLastSyncedAt: (value: string) => void;
   setSortMode: (value: SortMode) => void;
   setThemeMode: (value: AppSettings['themeMode']) => void;
   setNotificationDemoMode: (value: boolean) => void;
@@ -36,8 +42,11 @@ type AppState = {
   setTaskNotification: (taskId: string, notificationId?: string | null) => void;
   addHistoryItem: (item: Omit<TaskHistoryItem, 'id' | 'timestamp'> & Partial<Pick<TaskHistoryItem, 'timestamp'>>) => void;
   markTaskSyncStatus: (taskId: string, syncStatus: SyncStatus) => void;
+  setTaskRemoteId: (taskId: string, remoteId: string) => void;
+  updatePendingChangeAttempt: (taskId: string, params: { attemptedAt: string; error?: string | null }) => void;
   removePendingChange: (taskId: string) => void;
   mergeRemoteTasks: (tasks: Task[]) => void;
+  reconcileSyncStatuses: () => void;
 };
 
 const queuePendingChange = (pendingChanges: PendingChange[], nextChange: PendingChange) => {
@@ -45,6 +54,30 @@ const queuePendingChange = (pendingChanges: PendingChange[], nextChange: Pending
   return [...withoutTask, nextChange].sort(
     (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime(),
   );
+};
+
+const reconcileTasksWithPendingChanges = (tasks: Task[], pendingChanges: PendingChange[]) => {
+  const pendingMap = new Map(pendingChanges.map((change) => [change.taskId, change]));
+
+  return tasks.map((task) => {
+    const pendingChange = pendingMap.get(task.id);
+    if (!pendingChange) {
+      return task.syncStatus === 'synced'
+        ? task
+        : {
+            ...task,
+            syncStatus: 'synced' as const,
+          };
+    }
+
+    const nextSyncStatus: SyncStatus = pendingChange.lastAttemptError ? 'failed' : 'pending';
+    return task.syncStatus === nextSyncStatus
+      ? task
+      : {
+          ...task,
+          syncStatus: nextSyncStatus,
+        };
+  });
 };
 
 const appendHistory = (
@@ -67,8 +100,11 @@ export const useAppStore = create<AppState>()(
       tasks: [],
       history: [],
       pendingChanges: [],
-      isOnline: true,
+      isOnline: false,
       isSyncing: false,
+      serverStatus: 'unknown',
+      lastSyncError: null,
+      lastSyncedAt: null,
       sortMode: 'createdAt',
       settings: {
         themeMode: 'light',
@@ -77,6 +113,8 @@ export const useAppStore = create<AppState>()(
       setHasHydrated: (value) => set({ hasHydrated: value }),
       setOnlineStatus: (value) => set({ isOnline: value }),
       setSyncing: (value) => set({ isSyncing: value }),
+      setServerStatus: (serverStatus, error = null) => set({ serverStatus, lastSyncError: error }),
+      setLastSyncedAt: (lastSyncedAt) => set({ lastSyncedAt }),
       setSortMode: (value) => set({ sortMode: value }),
       setThemeMode: (value) =>
         set((state) => ({
@@ -104,12 +142,20 @@ export const useAppStore = create<AppState>()(
         };
 
         set((state) => ({
-          tasks: [task, ...state.tasks],
-          pendingChanges: queuePendingChange(state.pendingChanges, {
+          tasks: reconcileTasksWithPendingChanges([task, ...state.tasks], queuePendingChange(state.pendingChanges, {
             taskId: task.id,
             type: 'upsert',
             payload: task,
             updatedAt: task.updatedAt,
+            lastAttemptError: null,
+          })),
+          pendingChanges: queuePendingChange(state.pendingChanges, {
+            taskId: task.id,
+            remoteId: task.remoteId,
+            type: 'upsert',
+            payload: task,
+            updatedAt: task.updatedAt,
+            lastAttemptError: null,
           }),
           history: appendHistory(state.history, [
             {
@@ -146,12 +192,24 @@ export const useAppStore = create<AppState>()(
         const attachmentDiff = nextTask.attachments.length - current.attachments.length;
 
         set((state) => ({
-          tasks: state.tasks.map((item) => (item.id === taskId ? nextTask : item)),
+          tasks: reconcileTasksWithPendingChanges(
+            state.tasks.map((item) => (item.id === taskId ? nextTask : item)),
+            queuePendingChange(state.pendingChanges, {
+              taskId,
+              remoteId: nextTask.remoteId,
+              type: 'upsert',
+              payload: nextTask,
+              updatedAt: nextTask.updatedAt,
+              lastAttemptError: null,
+            }),
+          ),
           pendingChanges: queuePendingChange(state.pendingChanges, {
             taskId,
+            remoteId: nextTask.remoteId,
             type: 'upsert',
             payload: nextTask,
             updatedAt: nextTask.updatedAt,
+            lastAttemptError: null,
           }),
           history: appendHistory(state.history, [
             {
@@ -196,12 +254,24 @@ export const useAppStore = create<AppState>()(
         };
 
         set((state) => ({
-          tasks: state.tasks.map((item) => (item.id === taskId ? nextTask : item)),
+          tasks: reconcileTasksWithPendingChanges(
+            state.tasks.map((item) => (item.id === taskId ? nextTask : item)),
+            queuePendingChange(state.pendingChanges, {
+              taskId,
+              remoteId: nextTask.remoteId,
+              type: 'upsert',
+              payload: nextTask,
+              updatedAt: nextTask.updatedAt,
+              lastAttemptError: null,
+            }),
+          ),
           pendingChanges: queuePendingChange(state.pendingChanges, {
             taskId,
+            remoteId: nextTask.remoteId,
             type: 'upsert',
             payload: nextTask,
             updatedAt: nextTask.updatedAt,
+            lastAttemptError: null,
           }),
           history: appendHistory(state.history, [
             {
@@ -224,8 +294,10 @@ export const useAppStore = create<AppState>()(
           tasks: state.tasks.filter((item) => item.id !== taskId),
           pendingChanges: queuePendingChange(state.pendingChanges, {
             taskId,
+            remoteId: current.remoteId,
             type: 'delete',
             updatedAt: new Date().toISOString(),
+            lastAttemptError: null,
           }),
           history: appendHistory(state.history, [
             {
@@ -262,10 +334,42 @@ export const useAppStore = create<AppState>()(
               : item,
           ),
         })),
-      removePendingChange: (taskId) =>
+      setTaskRemoteId: (taskId, remoteId) =>
         set((state) => ({
-          pendingChanges: state.pendingChanges.filter((item) => item.taskId !== taskId),
+          tasks: state.tasks.map((item) => (item.id === taskId ? { ...item, remoteId } : item)),
+          pendingChanges: state.pendingChanges.map((change) =>
+            change.taskId === taskId && change.payload
+              ? { ...change, remoteId, payload: { ...change.payload, remoteId } }
+              : change.taskId === taskId
+                ? { ...change, remoteId }
+                : change,
+          ),
         })),
+      updatePendingChangeAttempt: (taskId, params) =>
+        set((state) => {
+          const pendingChanges = state.pendingChanges.map((item) =>
+            item.taskId === taskId
+              ? {
+                  ...item,
+                  lastAttemptedAt: params.attemptedAt,
+                  lastAttemptError: params.error ?? null,
+                }
+              : item,
+          );
+
+          return {
+            pendingChanges,
+            tasks: reconcileTasksWithPendingChanges(state.tasks, pendingChanges),
+          };
+        }),
+      removePendingChange: (taskId) =>
+        set((state) => {
+          const pendingChanges = state.pendingChanges.filter((item) => item.taskId !== taskId);
+          return {
+            pendingChanges,
+            tasks: reconcileTasksWithPendingChanges(state.tasks, pendingChanges),
+          };
+        }),
       mergeRemoteTasks: (remoteTasks) =>
         set((state) => {
           const tasksById = new Map(state.tasks.map((task) => [task.id, task]));
@@ -283,9 +387,13 @@ export const useAppStore = create<AppState>()(
           }
 
           return {
-            tasks: Array.from(tasksById.values()),
+            tasks: reconcileTasksWithPendingChanges(Array.from(tasksById.values()), state.pendingChanges),
           };
         }),
+      reconcileSyncStatuses: () =>
+        set((state) => ({
+          tasks: reconcileTasksWithPendingChanges(state.tasks, state.pendingChanges),
+        })),
     }),
     {
       name: 'task-tracker-storage',
@@ -298,6 +406,7 @@ export const useAppStore = create<AppState>()(
         settings: state.settings,
       }),
       onRehydrateStorage: () => (state) => {
+        state?.reconcileSyncStatuses();
         state?.setHasHydrated(true);
       },
     },

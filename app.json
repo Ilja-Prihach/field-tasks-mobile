@@ -2,12 +2,14 @@
   "expo": {
     "name": "Field Tasks MVP",
     "slug": "field-tasks-mvp-sa-rn-4827",
+    "scheme": "fieldtasksmvp",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ilya-prihach.fieldtasksmvpsarn4827"
     },
     "android": {
       "adaptiveIcon": {
@@ -16,7 +18,8 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.ilya_prihach.fieldtasksmvpsarn4827"
     },
     "web": {
       "favicon": "./assets/favicon.png"
