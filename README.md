@@ -11,6 +11,7 @@ Expo + React Native + TypeScript MVP for the SalesAutomators RN test task. The a
 - Validate forms with `react-hook-form` + `zod` and show visible user-facing errors.
 - View task list with empty state, sorting by `createdAt`, `dueDate`, `status` and task sync status.
 - Open task details with full data, attachment preview, location, history, status updates and delete action.
+- Assign tasks to one of three mock users, switch the active user in Settings and keep the acting user's name in task history.
 - Persist tasks, sync queue, history and theme locally with `AsyncStorage`.
 - Work offline for create/edit/delete/view and sync changes later when connectivity returns.
 - Schedule local notifications 30 minutes before deadline with fallback scheduling and 45-second demo mode.
@@ -40,12 +41,10 @@ src/
   screens/
   components/
   features/
-    attachments/
-    history/
     location/
     notifications/
     sync/
-    tasks/
+    users/
   storage/
   api/
   theme/
@@ -129,6 +128,7 @@ Only one process should listen on port `3001`. If Android reports an HTML respon
 - Zustand store persists `tasks`, `history`, `pendingChanges`, sorting and settings to `AsyncStorage`.
 - The app remains usable after restart without network.
 - Task history is global and filterable by `taskId` on the details screen.
+- Mock users are local reference data. A task stores creator and assignee snapshots, while each user action stores the actor ID and name so previous history remains stable after switching users.
 
 ### Sync
 

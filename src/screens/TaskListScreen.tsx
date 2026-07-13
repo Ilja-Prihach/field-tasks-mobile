@@ -244,6 +244,9 @@ export const TaskListScreen = () => {
                   <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
                 </View>
                 <StatusBadge status={item.status} />
+                <Text style={[styles.assignee, { color: colors.textMuted }]}>
+                  {t('assigned_to')}: {item.assignedTo.name}
+                </Text>
                 <View style={[styles.metaGrid, { borderTopColor: colors.border }]}>
                   <View style={styles.metaBlock}>
                     <Text style={[styles.metaLabel, { color: colors.textMuted }]}>{t('deadline')}</Text>
@@ -423,6 +426,10 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 18,
     gap: 12,
+  },
+  assignee: {
+    fontSize: 12,
+    fontWeight: '700',
   },
   taskTopRow: {
     flexDirection: 'row',

@@ -6,6 +6,11 @@ export type ThemeMode = 'light' | 'dark';
 export type LanguageCode = 'en' | 'ru';
 export type ServerStatus = 'unknown' | 'reachable' | 'unreachable';
 
+export type AppUser = {
+  id: string;
+  name: string;
+};
+
 export type TaskAttachment = {
   id: string;
   uri: string;
@@ -29,6 +34,8 @@ export type Task = {
   status: TaskStatus;
   location: TaskLocation;
   attachments: TaskAttachment[];
+  createdBy: AppUser;
+  assignedTo: AppUser;
   createdAt: string;
   updatedAt: string;
   syncStatus: SyncStatus;
@@ -39,6 +46,7 @@ export type HistoryActionType =
   | 'created'
   | 'updated'
   | 'status_changed'
+  | 'assignment_changed'
   | 'attachment_added'
   | 'deleted'
   | 'sync_started'
@@ -54,6 +62,8 @@ export type TaskHistoryItem = {
   timestamp: string;
   actionType: HistoryActionType;
   actor?: HistoryActor;
+  actorId?: string;
+  actorName?: string;
   description: string;
 };
 
@@ -74,6 +84,7 @@ export type TaskPayload = {
   status: TaskStatus;
   location: TaskLocation;
   attachments: TaskAttachment[];
+  assignedTo?: AppUser;
 };
 
 export type NotificationScheduleResult = {
@@ -85,4 +96,5 @@ export type AppSettings = {
   themeMode: ThemeMode;
   notificationDemoMode: boolean;
   language: LanguageCode;
+  currentUserId: string;
 };

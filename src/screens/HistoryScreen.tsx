@@ -39,6 +39,11 @@ export const HistoryScreen = () => {
               {item.taskTitle ?? tasks.find((task) => task.id === item.taskId)?.title ?? '—'}
             </Text>
             <Text style={{ color: colors.textMuted }}>{item.description}</Text>
+            {item.actorName ? (
+              <Text style={[styles.actor, { color: colors.primary }]}>
+                {t('changed_by', { name: item.actorName })}
+              </Text>
+            ) : null}
             <Text style={{ color: colors.textMuted }}>{formatDateTime(item.timestamp)}</Text>
           </SectionCard>
         )}
@@ -63,5 +68,9 @@ const styles = StyleSheet.create({
   taskTitle: {
     fontSize: 14,
     fontWeight: '700',
+  },
+  actor: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

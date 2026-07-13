@@ -17,6 +17,7 @@ import {
   TaskStatus,
 } from '../types/task';
 import { getDefaultLanguage, getStatusTranslationKey, translate } from '../utils/translations';
+import { DEFAULT_USER, getUserById } from '../features/users/users';
 
 type AppState = {
   hasHydrated: boolean;
@@ -40,6 +41,7 @@ type AppState = {
   toggleSortDirection: () => void;
   setThemeMode: (value: AppSettings['themeMode']) => void;
   setLanguage: (value: LanguageCode) => void;
+  setCurrentUser: (userId: string) => void;
   setNotificationDemoMode: (value: boolean) => void;
   createTask: (payload: TaskPayload) => Task;
   editTask: (taskId: string, payload: TaskPayload) => Task | undefined;
@@ -99,6 +101,12 @@ const appendHistory = (
   return [...prepared.reverse(), ...history];
 };
 
+const normalizeTaskUsers = (task: Task, fallbackUserId: string): Task => ({
+  ...task,
+  createdBy: task.createdBy ?? getUserById(fallbackUserId),
+  assignedTo: task.assignedTo ?? getUserById(fallbackUserId),
+});
+
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
@@ -117,6 +125,7 @@ export const useAppStore = create<AppState>()(
         themeMode: 'light',
         notificationDemoMode: true,
         language: getDefaultLanguage(),
+        currentUserId: DEFAULT_USER.id,
       },
       setHasHydrated: (value) => set({ hasHydrated: value }),
       setOnlineStatus: (value) => set({ isOnline: value }),
@@ -144,6 +153,13 @@ export const useAppStore = create<AppState>()(
             language: value,
           },
         })),
+      setCurrentUser: (currentUserId) =>
+        set((state) => ({
+          settings: {
+            ...state.settings,
+            currentUserId: getUserById(currentUserId).id,
+          },
+        })),
       setNotificationDemoMode: (value) =>
         set((state) => ({
           settings: {
@@ -153,10 +169,13 @@ export const useAppStore = create<AppState>()(
         })),
       createTask: (payload) => {
         const language = get().settings.language;
+        const currentUser = getUserById(get().settings.currentUserId);
         const now = new Date().toISOString();
         const task: Task = {
           id: createId('task'),
           ...payload,
+          createdBy: currentUser,
+          assignedTo: payload.assignedTo ?? currentUser,
           createdAt: now,
           updatedAt: now,
           syncStatus: 'pending',
@@ -185,6 +204,8 @@ export const useAppStore = create<AppState>()(
               taskTitle: task.title,
               actionType: 'created',
               actor: 'user',
+              actorId: currentUser.id,
+              actorName: currentUser.name,
               description: translate(language, 'history_task_created', { title: task.title }),
             },
             ...(task.attachments.length
@@ -194,6 +215,8 @@ export const useAppStore = create<AppState>()(
                     taskTitle: task.title,
                     actionType: 'attachment_added' as const,
                     actor: 'user' as const,
+                    actorId: currentUser.id,
+                    actorName: currentUser.name,
                     description: translate(language, 'history_attachments_added', {
                       count: task.attachments.length,
                     }),
@@ -207,6 +230,7 @@ export const useAppStore = create<AppState>()(
       },
       editTask: (taskId, payload) => {
         const language = get().settings.language;
+        const currentUser = getUserById(get().settings.currentUserId);
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current) {
           return undefined;
@@ -215,6 +239,7 @@ export const useAppStore = create<AppState>()(
         const nextTask: Task = {
           ...current,
           ...payload,
+          assignedTo: payload.assignedTo ?? current.assignedTo,
           updatedAt: new Date().toISOString(),
           syncStatus: 'pending',
         };
@@ -246,6 +271,8 @@ export const useAppStore = create<AppState>()(
               taskTitle: nextTask.title,
               actionType: 'updated',
               actor: 'user',
+              actorId: currentUser.id,
+              actorName: currentUser.name,
               description: translate(language, 'history_task_updated', { title: nextTask.title }),
             },
             ...(current.status !== nextTask.status
@@ -255,8 +282,25 @@ export const useAppStore = create<AppState>()(
                     taskTitle: nextTask.title,
                     actionType: 'status_changed' as const,
                     actor: 'user' as const,
+                    actorId: currentUser.id,
+                    actorName: currentUser.name,
                     description: translate(language, 'history_status_to', {
                       status: translate(language, getStatusTranslationKey(nextTask.status)),
+                    }),
+                  },
+                ]
+              : []),
+            ...(current.assignedTo.id !== nextTask.assignedTo.id
+              ? [
+                  {
+                    taskId,
+                    taskTitle: nextTask.title,
+                    actionType: 'assignment_changed' as const,
+                    actor: 'user' as const,
+                    actorId: currentUser.id,
+                    actorName: currentUser.name,
+                    description: translate(language, 'history_assigned_to', {
+                      name: nextTask.assignedTo.name,
                     }),
                   },
                 ]
@@ -268,6 +312,8 @@ export const useAppStore = create<AppState>()(
                     taskTitle: nextTask.title,
                     actionType: 'attachment_added' as const,
                     actor: 'user' as const,
+                    actorId: currentUser.id,
+                    actorName: currentUser.name,
                     description: translate(language, 'history_attachments_added', { count: attachmentDiff }),
                   },
                 ]
@@ -279,6 +325,7 @@ export const useAppStore = create<AppState>()(
       },
       updateTaskStatus: (taskId, status) => {
         const language = get().settings.language;
+        const currentUser = getUserById(get().settings.currentUserId);
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current || current.status === status) {
           return current;
@@ -317,6 +364,8 @@ export const useAppStore = create<AppState>()(
               taskTitle: nextTask.title,
               actionType: 'status_changed',
               actor: 'user',
+              actorId: currentUser.id,
+              actorName: currentUser.name,
               description: translate(language, 'history_status_to', {
                 status: translate(language, getStatusTranslationKey(status)),
               }),
@@ -328,6 +377,7 @@ export const useAppStore = create<AppState>()(
       },
       deleteTask: (taskId) => {
         const language = get().settings.language;
+        const currentUser = getUserById(get().settings.currentUserId);
         const current = get().tasks.find((item) => item.id === taskId);
         if (!current) {
           return;
@@ -348,6 +398,8 @@ export const useAppStore = create<AppState>()(
               taskTitle: current.title,
               actionType: 'deleted',
               actor: 'user',
+              actorId: currentUser.id,
+              actorName: currentUser.name,
               description: translate(language, 'history_task_deleted', { title: current.title }),
             },
           ]),
@@ -417,10 +469,13 @@ export const useAppStore = create<AppState>()(
         }),
       mergeRemoteTasks: (remoteTasks) =>
         set((state) => {
+          const normalizedRemoteTasks = remoteTasks.map((task) =>
+            normalizeTaskUsers(task, state.settings.currentUserId),
+          );
           const tasksById = new Map(state.tasks.map((task) => [task.id, task]));
           const taskIdsWithPendingChanges = new Set(state.pendingChanges.map((item) => item.taskId));
 
-          for (const remoteTask of remoteTasks) {
+          for (const remoteTask of normalizedRemoteTasks) {
             if (taskIdsWithPendingChanges.has(remoteTask.id)) {
               continue;
             }
@@ -457,7 +512,17 @@ export const useAppStore = create<AppState>()(
             themeMode: state.settings?.themeMode ?? 'light',
             notificationDemoMode: state.settings?.notificationDemoMode ?? true,
             language: state.settings?.language ?? getDefaultLanguage(),
+            currentUserId: getUserById(state.settings?.currentUserId).id,
           };
+          state.tasks = (state.tasks ?? []).map((task) =>
+            normalizeTaskUsers(task, state.settings.currentUserId),
+          );
+          state.pendingChanges = (state.pendingChanges ?? []).map((change) => ({
+            ...change,
+            payload: change.payload
+              ? normalizeTaskUsers(change.payload, state.settings.currentUserId)
+              : undefined,
+          }));
         }
         state?.reconcileSyncStatuses();
         state?.setHasHydrated(true);

@@ -13,6 +13,8 @@ import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { RootStackParamList } from '../app/AppNavigator';
 import { TaskMap } from '../features/location/TaskMap';
+import { UserSelector } from '../features/users/UserSelector';
+import { getUserById } from '../features/users/users';
 import { geocodeAddress } from '../features/location/geocodingService';
 import {
   cancelTaskNotification,
@@ -42,6 +44,7 @@ type FormValues = {
   latitude: string;
   longitude: string;
   status: TaskStatus;
+  assignedToId: string;
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'TaskForm'>;
@@ -73,6 +76,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const editTask = useAppStore((state) => state.editTask);
   const setTaskNotification = useAppStore((state) => state.setTaskNotification);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
+  const currentUserId = useAppStore((state) => state.settings.currentUserId);
   const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks]);
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
@@ -96,8 +100,9 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       latitude: String(task?.location.latitude ?? LOCATION_PRESETS[0].latitude),
       longitude: String(task?.location.longitude ?? LOCATION_PRESETS[0].longitude),
       status: task?.status ?? 'new',
+      assignedToId: task?.assignedTo.id ?? currentUserId,
     }),
-    [defaultDueDate, task],
+    [currentUserId, defaultDueDate, task],
   );
 
   const {
@@ -134,6 +139,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
             return !Number.isNaN(number) && number >= -180 && number <= 180;
           }, t('longitude_range')),
         status: z.enum(['new', 'in_progress', 'completed', 'cancelled']),
+        assignedToId: z.string().min(1),
       }),
     ),
   });
@@ -157,6 +163,8 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
           longitude: Number(watchedLongitude),
         },
         attachments: [],
+        createdBy: getUserById(currentUserId),
+        assignedTo: getUserById(currentUserId),
         createdAt: defaultDueDate.toISOString(),
         updatedAt: defaultDueDate.toISOString(),
         syncStatus: 'pending',
@@ -272,6 +280,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
         longitude: Number(values.longitude),
       },
       attachments,
+      assignedTo: getUserById(values.assignedToId),
     };
 
     const savedTask = task ? editTask(task.id, payload) : createTask(payload);
@@ -451,6 +460,17 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                 </Pressable>
               ))}
             </View>
+          )}
+        />
+      </SectionCard>
+
+      <SectionCard title={t('assigned_to')}>
+        <Text style={[styles.helperText, { color: colors.textMuted }]}>{t('assigned_to_help')}</Text>
+        <Controller
+          control={control}
+          name="assignedToId"
+          render={({ field: { value, onChange } }) => (
+            <UserSelector value={value} onChange={onChange} />
           )}
         />
       </SectionCard>

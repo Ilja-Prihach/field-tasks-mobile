@@ -103,6 +103,8 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
         <StatusBadge status={task.status} />
         <InfoRow label={t('description')} value={task.description} />
         <InfoRow label={t('due')} value={formatDateTime(task.dueDate)} />
+        <InfoRow label={t('created_by')} value={task.createdBy.name} />
+        <InfoRow label={t('assigned_to')} value={task.assignedTo.name} />
         <InfoRow label={t('sync')} value={getSyncStatusLabel(task.syncStatus, language)} />
       </SectionCard>
 
@@ -224,6 +226,11 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
                 {getHistoryActionLabel(entry.actionType, language)}
               </Text>
               <Text style={{ color: colors.textMuted }}>{entry.description}</Text>
+              {entry.actorName ? (
+                <Text style={[styles.historyActor, { color: colors.primary }]}>
+                  {t('changed_by', { name: entry.actorName })}
+                </Text>
+              ) : null}
               <Text style={{ color: colors.textMuted }}>{formatDateTime(entry.timestamp)}</Text>
             </View>
           ))
@@ -333,5 +340,9 @@ const styles = StyleSheet.create({
   historyTitle: {
     fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  historyActor: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

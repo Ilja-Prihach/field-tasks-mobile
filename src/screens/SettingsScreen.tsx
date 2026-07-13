@@ -5,6 +5,7 @@ import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { syncPendingChanges } from '../features/sync/syncService';
+import { UserSelector } from '../features/users/UserSelector';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
 import { useTranslation } from '../utils/useTranslation';
@@ -21,10 +22,12 @@ export const SettingsScreen = () => {
   const lastSyncedAt = useAppStore((state) => state.lastSyncedAt);
   const themeMode = useAppStore((state) => state.settings.themeMode);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
+  const currentUserId = useAppStore((state) => state.settings.currentUserId);
   const pendingChanges = useAppStore((state) => state.pendingChanges.length);
   const setThemeMode = useAppStore((state) => state.setThemeMode);
   const setLanguage = useAppStore((state) => state.setLanguage);
   const setNotificationDemoMode = useAppStore((state) => state.setNotificationDemoMode);
+  const setCurrentUser = useAppStore((state) => state.setCurrentUser);
 
   return (
     <ScreenContainer scroll>
@@ -40,6 +43,11 @@ export const SettingsScreen = () => {
             <PrimaryButton label={t('russian')} onPress={() => setLanguage('ru')} variant={language === 'ru' ? 'primary' : 'secondary'} />
           </View>
         </View>
+      </SectionCard>
+
+      <SectionCard title={t('current_user')}>
+        <Text style={{ color: colors.textMuted }}>{t('current_user_help')}</Text>
+        <UserSelector value={currentUserId} onChange={setCurrentUser} />
       </SectionCard>
 
       <SectionCard title={t('notifications')}>

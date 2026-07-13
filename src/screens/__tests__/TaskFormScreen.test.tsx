@@ -59,6 +59,7 @@ describe('TaskFormScreen', () => {
       'Install a new relay and verify signal levels.',
     );
     await fireEvent.press(screen.getByText('Warsaw'));
+    await fireEvent.press(screen.getByText('User 2'));
     await fireEvent.press(screen.getByText('Create task'));
 
     await waitFor(() => {
@@ -72,6 +73,8 @@ describe('TaskFormScreen', () => {
       location: {
         address: 'Marszalkowska 100, Warsaw',
       },
+      createdBy: { id: 'user-1', name: 'User 1' },
+      assignedTo: { id: 'user-2', name: 'User 2' },
     });
     expect(replaceMock).toHaveBeenCalledWith('TaskDetails', { taskId: task.id });
   });

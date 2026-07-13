@@ -26,18 +26,76 @@ describe('useAppStore', () => {
           mimeType: 'image/jpeg',
         },
       ],
+      assignedTo: { id: 'user-2', name: 'User 2' },
     });
 
     const state = useAppStore.getState();
     expect(state.tasks).toHaveLength(1);
     expect(state.tasks[0].id).toBe(task.id);
     expect(state.tasks[0].syncStatus).toBe('pending');
+    expect(state.tasks[0].createdBy).toEqual({ id: 'user-1', name: 'User 1' });
+    expect(state.tasks[0].assignedTo).toEqual({ id: 'user-2', name: 'User 2' });
     expect(state.pendingChanges).toHaveLength(1);
     expect(state.pendingChanges[0]).toMatchObject({
       taskId: task.id,
       type: 'upsert',
     });
     expect(state.history.map((item) => item.actionType)).toEqual(['attachment_added', 'created']);
+  });
+
+  it('records the acting user without changing the original creator', () => {
+    const task = useAppStore.getState().createTask({
+      title: 'Inspect panel',
+      description: 'Check the control panel.',
+      dueDate: '2030-04-01T09:00:00.000Z',
+      status: 'new',
+      location: { address: 'Minsk', latitude: 53.9, longitude: 27.56 },
+      attachments: [],
+    });
+
+    useAppStore.getState().setCurrentUser('user-3');
+    useAppStore.getState().updateTaskStatus(task.id, 'in_progress');
+
+    const state = useAppStore.getState();
+    expect(state.tasks[0].createdBy.name).toBe('User 1');
+    expect(state.history[0]).toMatchObject({
+      actionType: 'status_changed',
+      actorId: 'user-3',
+      actorName: 'User 3',
+    });
+    expect(state.history.find((item) => item.actionType === 'created')).toMatchObject({
+      actorId: 'user-1',
+      actorName: 'User 1',
+    });
+  });
+
+  it('records assignee changes with the acting user', () => {
+    const task = useAppStore.getState().createTask({
+      title: 'Inspect panel',
+      description: 'Check the control panel.',
+      dueDate: '2030-04-01T09:00:00.000Z',
+      status: 'new',
+      location: { address: 'Minsk', latitude: 53.9, longitude: 27.56 },
+      attachments: [],
+    });
+
+    useAppStore.getState().setCurrentUser('user-2');
+    useAppStore.getState().editTask(task.id, {
+      title: task.title,
+      description: task.description,
+      dueDate: task.dueDate,
+      status: task.status,
+      location: task.location,
+      attachments: task.attachments,
+      assignedTo: { id: 'user-3', name: 'User 3' },
+    });
+
+    expect(useAppStore.getState().tasks[0].assignedTo.name).toBe('User 3');
+    expect(useAppStore.getState().history[0]).toMatchObject({
+      actionType: 'assignment_changed',
+      actorName: 'User 2',
+      description: 'Task assigned to User 3.',
+    });
   });
 
   it('updates status and records a status_changed history event', () => {

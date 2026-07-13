@@ -13,6 +13,12 @@ const translations = {
     appearance: 'Appearance',
     dark_mode: 'Dark mode',
     language: 'Language',
+    current_user: 'Current user',
+    current_user_help: 'Actions in task history will be recorded under this user.',
+    created_by: 'Created by',
+    assigned_to: 'Assigned to',
+    assigned_to_help: 'Choose the person responsible for this task.',
+    changed_by: 'Changed by {name}',
     english: 'English',
     russian: 'Russian',
     notifications: 'Notifications',
@@ -173,6 +179,7 @@ const translations = {
     history_created: 'created',
     history_updated: 'updated',
     history_status_changed: 'status changed',
+    history_assignment_changed: 'assignee changed',
     history_attachment_added: 'attachment added',
     history_deleted: 'deleted',
     history_sync_started: 'sync started',
@@ -181,6 +188,7 @@ const translations = {
     history_task_created: 'Task "{title}" was created.',
     history_task_updated: 'Task "{title}" was updated.',
     history_status_to: 'Status changed to "{status}".',
+    history_assigned_to: 'Task assigned to {name}.',
     history_attachments_added: '{count} attachment(s) added.',
     history_task_deleted: 'Task "{title}" was deleted.',
     server_status_unknown: 'unknown',
@@ -199,6 +207,12 @@ const translations = {
     appearance: 'Оформление',
     dark_mode: 'Темная тема',
     language: 'Язык',
+    current_user: 'Текущий пользователь',
+    current_user_help: 'Действия в истории задач будут записаны от имени этого пользователя.',
+    created_by: 'Создал',
+    assigned_to: 'Исполнитель',
+    assigned_to_help: 'Выбери ответственного за эту задачу.',
+    changed_by: 'Изменил: {name}',
     english: 'English',
     russian: 'Русский',
     notifications: 'Уведомления',
@@ -359,6 +373,7 @@ const translations = {
     history_created: 'создание',
     history_updated: 'обновление',
     history_status_changed: 'смена статуса',
+    history_assignment_changed: 'смена исполнителя',
     history_attachment_added: 'добавление вложения',
     history_deleted: 'удаление',
     history_sync_started: 'старт синка',
@@ -367,6 +382,7 @@ const translations = {
     history_task_created: 'Задача "{title}" создана.',
     history_task_updated: 'Задача "{title}" обновлена.',
     history_status_to: 'Статус изменен на "{status}".',
+    history_assigned_to: 'Исполнитель задачи: {name}.',
     history_attachments_added: 'Добавлено вложений: {count}.',
     history_task_deleted: 'Задача "{title}" удалена.',
     server_status_unknown: 'неизвестно',
@@ -434,6 +450,8 @@ export const getHistoryActionTranslationKey = (actionType: HistoryActionType): T
       return 'history_updated';
     case 'status_changed':
       return 'history_status_changed';
+    case 'assignment_changed':
+      return 'history_assignment_changed';
     case 'attachment_added':
       return 'history_attachment_added';
     case 'deleted':

@@ -18,6 +18,7 @@ export const resetAppStore = () => {
       themeMode: 'light',
       notificationDemoMode: true,
       language: 'en',
+      currentUserId: 'user-1',
     },
   });
 };
@@ -34,6 +35,8 @@ export const buildTask = (overrides: Partial<Task> = {}): Task => ({
     longitude: 27.559,
   },
   attachments: [],
+  createdBy: { id: 'user-1', name: 'User 1' },
+  assignedTo: { id: 'user-1', name: 'User 1' },
   createdAt: '2030-01-01T08:00:00.000Z',
   updatedAt: '2030-01-01T08:00:00.000Z',
   syncStatus: 'pending',
