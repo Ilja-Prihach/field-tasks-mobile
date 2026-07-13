@@ -1,4 +1,4 @@
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
@@ -26,17 +26,24 @@ export const MapScreen = () => {
 
   return (
     <ScreenContainer>
-      <TaskMap
-        tasks={tasks}
-        style={StyleSheet.absoluteFill}
-        onTaskPress={(task) => navigation.navigate('TaskDetails', { taskId: task.id })}
-      />
-      <Text style={[styles.hint, { color: colors.text }]}>{t('tap_marker_hint')}</Text>
+      <View style={styles.mapWrapper}>
+        <TaskMap
+          tasks={tasks}
+          style={StyleSheet.absoluteFill}
+          onTaskPress={(task) => navigation.navigate('TaskDetails', { taskId: task.id })}
+        />
+        <Text pointerEvents="none" style={[styles.hint, { color: colors.text }]}>
+          {t('tap_marker_hint')}
+        </Text>
+      </View>
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
+  mapWrapper: {
+    flex: 1,
+  },
   hint: {
     position: 'absolute',
     left: 16,

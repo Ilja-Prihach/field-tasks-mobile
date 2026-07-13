@@ -182,14 +182,18 @@ export const useAppStore = create<AppState>()(
           history: appendHistory(state.history, [
             {
               taskId: task.id,
+              taskTitle: task.title,
               actionType: 'created',
+              actor: 'user',
               description: translate(language, 'history_task_created', { title: task.title }),
             },
             ...(task.attachments.length
               ? [
                   {
                     taskId: task.id,
+                    taskTitle: task.title,
                     actionType: 'attachment_added' as const,
+                    actor: 'user' as const,
                     description: translate(language, 'history_attachments_added', {
                       count: task.attachments.length,
                     }),
@@ -239,14 +243,18 @@ export const useAppStore = create<AppState>()(
           history: appendHistory(state.history, [
             {
               taskId,
+              taskTitle: nextTask.title,
               actionType: 'updated',
+              actor: 'user',
               description: translate(language, 'history_task_updated', { title: nextTask.title }),
             },
             ...(current.status !== nextTask.status
               ? [
                   {
                     taskId,
+                    taskTitle: nextTask.title,
                     actionType: 'status_changed' as const,
+                    actor: 'user' as const,
                     description: translate(language, 'history_status_to', {
                       status: translate(language, getStatusTranslationKey(nextTask.status)),
                     }),
@@ -257,7 +265,9 @@ export const useAppStore = create<AppState>()(
               ? [
                   {
                     taskId,
+                    taskTitle: nextTask.title,
                     actionType: 'attachment_added' as const,
+                    actor: 'user' as const,
                     description: translate(language, 'history_attachments_added', { count: attachmentDiff }),
                   },
                 ]
@@ -304,7 +314,9 @@ export const useAppStore = create<AppState>()(
           history: appendHistory(state.history, [
             {
               taskId,
+              taskTitle: nextTask.title,
               actionType: 'status_changed',
+              actor: 'user',
               description: translate(language, 'history_status_to', {
                 status: translate(language, getStatusTranslationKey(status)),
               }),
@@ -333,7 +345,9 @@ export const useAppStore = create<AppState>()(
           history: appendHistory(state.history, [
             {
               taskId,
+              taskTitle: current.title,
               actionType: 'deleted',
+              actor: 'user',
               description: translate(language, 'history_task_deleted', { title: current.title }),
             },
           ]),

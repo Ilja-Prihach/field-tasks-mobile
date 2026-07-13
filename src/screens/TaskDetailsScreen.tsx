@@ -1,9 +1,8 @@
-import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useMemo, useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { InfoRow } from '../components/InfoRow';
-import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { StatusBadge } from '../components/StatusBadge';
@@ -33,7 +32,14 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
     [route.params.taskId, tasks],
   );
   const history = useMemo(
-    () => allHistory.filter((item) => item.taskId === route.params.taskId),
+    () =>
+      allHistory.filter(
+        (item) =>
+          item.taskId === route.params.taskId &&
+          item.actionType !== 'sync_started' &&
+          item.actionType !== 'synced' &&
+          item.actionType !== 'sync_failed',
+      ),
     [allHistory, route.params.taskId],
   );
 
@@ -84,6 +90,12 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
     ]);
   };
 
+  const statusActions: Array<{ value: typeof task.status; label: string }> = [
+    { value: 'in_progress', label: t('in_progress') },
+    { value: 'completed', label: t('completed') },
+    { value: 'cancelled', label: t('cancelled') },
+  ];
+
   return (
     <ScreenContainer scroll>
       <SectionCard>
@@ -104,15 +116,67 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
       </SectionCard>
 
       <SectionCard title={t('actions')}>
-        <PrimaryButton label={t('edit_task_button')} onPress={() => navigation.navigate('TaskForm', { taskId: task.id })} />
-        <View style={styles.actionRow}>
-          <PrimaryButton label={t('in_progress')} onPress={() => void handleStatusChange('in_progress')} variant="secondary" />
-          <PrimaryButton label={t('completed')} onPress={() => void handleStatusChange('completed')} variant="secondary" />
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => navigation.navigate('TaskForm', { taskId: task.id })}
+          style={[styles.actionListRow, { backgroundColor: colors.surfaceMuted, borderColor: colors.border }]}
+        >
+          <View style={styles.statusActionCopy}>
+            <Text style={[styles.statusActionLabel, { color: colors.text }]}>{t('edit_task_button')}</Text>
+            <Text style={[styles.statusActionHint, { color: colors.textMuted }]}>{t('action_edit_hint')}</Text>
+          </View>
+          <Text style={[styles.actionChevron, { color: colors.textMuted }]}>›</Text>
+        </Pressable>
+
+        <Text style={[styles.sectionCaption, { color: colors.textMuted }]}>{t('action_status_section')}</Text>
+        <View style={styles.statusActions}>
+          {statusActions.map((action) => {
+            const isCurrent = task.status === action.value;
+
+            return (
+              <Pressable
+                key={action.value}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isCurrent, disabled: isCurrent }}
+                disabled={isCurrent}
+                onPress={() => void handleStatusChange(action.value)}
+                style={[
+                  styles.statusActionRow,
+                  {
+                    backgroundColor: isCurrent ? `${colors.primary}16` : colors.surfaceMuted,
+                    borderColor: isCurrent ? colors.primary : colors.border,
+                    opacity: isCurrent ? 1 : 0.96,
+                  },
+                ]}
+              >
+                <View style={styles.statusActionCopy}>
+                  <Text style={[styles.statusActionLabel, { color: colors.text }]}>{action.label}</Text>
+                  <Text style={[styles.statusActionHint, { color: colors.textMuted }]}>
+                    {isCurrent ? t('status_current') : t('status_tap_to_change')}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.statusActionDot,
+                    { backgroundColor: isCurrent ? colors.primary : colors.textMuted },
+                  ]}
+                />
+              </Pressable>
+            );
+          })}
         </View>
-        <View style={styles.actionRow}>
-          <PrimaryButton label={t('cancelled')} onPress={() => void handleStatusChange('cancelled')} variant="secondary" />
-          <PrimaryButton label={t('delete')} onPress={handleDelete} variant="danger" />
-        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          onPress={handleDelete}
+          style={[styles.actionListRow, { backgroundColor: `${colors.danger}12`, borderColor: `${colors.danger}33` }]}
+        >
+          <View style={styles.statusActionCopy}>
+            <Text style={[styles.statusActionLabel, { color: colors.danger }]}>{t('delete')}</Text>
+            <Text style={[styles.statusActionHint, { color: colors.textMuted }]}>{t('action_delete_hint')}</Text>
+          </View>
+          <Text style={[styles.actionChevron, { color: colors.danger }]}>›</Text>
+        </Pressable>
       </SectionCard>
 
       <SectionCard title={t('attachments')}>
@@ -176,9 +240,57 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '700',
   },
-  actionRow: {
+  statusActions: {
+    gap: 8,
+  },
+  sectionCaption: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  actionListRow: {
+    minHeight: 56,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     gap: 12,
+  },
+  statusActionRow: {
+    minHeight: 52,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  statusActionCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  statusActionLabel: {
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  statusActionHint: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  statusActionDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+  },
+  actionChevron: {
+    fontSize: 24,
+    lineHeight: 24,
   },
   attachmentsGrid: {
     flexDirection: 'row',

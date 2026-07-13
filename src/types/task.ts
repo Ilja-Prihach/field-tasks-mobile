@@ -45,11 +45,15 @@ export type HistoryActionType =
   | 'synced'
   | 'sync_failed';
 
+export type HistoryActor = 'user' | 'system';
+
 export type TaskHistoryItem = {
   id: string;
   taskId?: string;
+  taskTitle?: string;
   timestamp: string;
   actionType: HistoryActionType;
+  actor?: HistoryActor;
   description: string;
 };
 

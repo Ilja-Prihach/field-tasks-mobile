@@ -1,75 +1,96 @@
-import { useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { RootStackParamList } from '../app/AppNavigator';
 import { EmptyState } from '../components/EmptyState';
-import { ScreenContainer } from '../components/ScreenContainer';
+import { PrimaryButton } from '../components/PrimaryButton';
 import { StatusBadge } from '../components/StatusBadge';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
-import { TaskStatus } from '../types/task';
 import { useTranslation } from '../utils/useTranslation';
 import { formatDateTime } from '../utils/date';
 import { getSyncStatusLabel, getTaskShortLocation, sortTasks } from '../utils/task';
 
-type StatusFilter = 'all' | TaskStatus;
-
-const getDirectionLabel = (
-  sortMode: 'createdAt' | 'dueDate' | 'status',
-  direction: 'asc' | 'desc',
-  t: ReturnType<typeof useTranslation>['t'],
-) => {
-  if (sortMode === 'createdAt') {
-    return direction === 'asc' ? t('direction_oldest_first') : t('direction_newest_first');
-  }
-  if (sortMode === 'dueDate') {
-    return direction === 'asc' ? t('direction_due_soon') : t('direction_due_later');
-  }
-  return direction === 'asc' ? t('direction_new_first') : t('direction_cancelled_first');
-};
+type TaskFilter = 'all' | 'new' | 'in_progress' | 'completed' | 'deadline_soon';
 
 export const TaskListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
   const { language, t } = useTranslation();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const rawTasks = useAppStore((state) => state.tasks);
-  const sortMode = useAppStore((state) => state.sortMode);
-  const sortDirection = useAppStore((state) => state.sortDirection);
-  const setSortMode = useAppStore((state) => state.setSortMode);
-  const toggleSortDirection = useAppStore((state) => state.toggleSortDirection);
-  const filterOptions: { value: StatusFilter; label: string }[] = [
+  const dropdownAnimation = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.timing(dropdownAnimation, {
+      toValue: isFilterOpen ? 1 : 0,
+      duration: 180,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [dropdownAnimation, isFilterOpen]);
+
+  const filterOptions: { value: TaskFilter; label: string }[] = [
     { value: 'all', label: t('filter_all') },
     { value: 'new', label: t('filter_new') },
     { value: 'in_progress', label: t('filter_in_progress') },
     { value: 'completed', label: t('filter_completed') },
-    { value: 'cancelled', label: t('filter_cancelled') },
+    { value: 'deadline_soon', label: t('filter_deadline_soon') },
   ];
-  const sortOptions = [
-    { value: 'createdAt', label: t('sort_added') },
-    { value: 'dueDate', label: t('sort_deadline') },
-    { value: 'status', label: t('sort_status') },
-  ] as const;
+
   const counts = useMemo(
     () => ({
       all: rawTasks.length,
       new: rawTasks.filter((task) => task.status === 'new').length,
       in_progress: rawTasks.filter((task) => task.status === 'in_progress').length,
       completed: rawTasks.filter((task) => task.status === 'completed').length,
-      cancelled: rawTasks.filter((task) => task.status === 'cancelled').length,
+      deadline_soon: rawTasks.filter(
+        (task) => task.status !== 'completed' && task.status !== 'cancelled',
+      ).length,
     }),
     [rawTasks],
   );
+
   const tasks = useMemo(() => {
-    const filtered = statusFilter === 'all' ? rawTasks : rawTasks.filter((task) => task.status === statusFilter);
-    return sortTasks(filtered, sortMode, sortDirection);
-  }, [rawTasks, sortDirection, sortMode, statusFilter]);
+    if (taskFilter === 'deadline_soon') {
+      const activeTasks = rawTasks.filter(
+        (task) => task.status !== 'completed' && task.status !== 'cancelled',
+      );
+      return sortTasks(activeTasks, 'dueDate', 'asc');
+    }
+
+    const filtered =
+      taskFilter === 'all' ? rawTasks : rawTasks.filter((task) => task.status === taskFilter);
+    return sortTasks(filtered, 'createdAt', 'desc');
+  }, [rawTasks, taskFilter]);
+
   const activeCount = counts.new + counts.in_progress;
+  const activeFilterLabel =
+    filterOptions.find((option) => option.value === taskFilter)?.label ?? t('filter_all');
+  const dropdownStyle = {
+    opacity: dropdownAnimation,
+    transform: [
+      {
+        translateY: dropdownAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-10, 0],
+        }),
+      },
+      {
+        scaleY: dropdownAnimation.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.94, 1],
+        }),
+      },
+    ],
+  } as const;
 
   return (
-    <ScreenContainer>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <FlatList
         data={tasks}
         keyExtractor={(item) => item.id}
@@ -77,6 +98,11 @@ export const TaskListScreen = () => {
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           <View style={styles.headerContent}>
+            <View style={styles.topBar}>
+              <Text style={[styles.screenTitle, { color: colors.text }]}>{t('tab_tasks')}</Text>
+              <PrimaryButton label={t('add_task')} onPress={() => navigation.navigate('TaskForm')} />
+            </View>
+
             <View style={[styles.hero, { backgroundColor: colors.accent }]}>
               <Text style={styles.eyebrow}>{t('field_overview')}</Text>
               <Text style={styles.heroTitle}>
@@ -90,69 +116,86 @@ export const TaskListScreen = () => {
               </Text>
             </View>
 
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('filter_by_status')}</Text>
-              <Text style={[styles.sectionHint, { color: colors.textMuted }]}>{t('shown_count', { count: tasks.length })}</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filterRow}
-            >
-              {filterOptions.map((option) => {
-                const selected = statusFilter === option.value;
-                return (
-                  <Pressable
-                    key={option.value}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    onPress={() => setStatusFilter(option.value)}
-                    style={[
-                      styles.filterChip,
-                      {
-                        backgroundColor: selected ? colors.text : colors.surface,
-                        borderColor: selected ? colors.text : colors.border,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.filterLabel, { color: selected ? colors.background : colors.text }]}>
-                      {option.label}
-                    </Text>
-                    <View style={[styles.countBubble, { backgroundColor: selected ? colors.primary : colors.surfaceMuted }]}>
-                      <Text style={[styles.countText, { color: selected ? '#fff' : colors.textMuted }]}>
-                        {counts[option.value]}
-                      </Text>
-                    </View>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.filterBlock}>
+              <View style={styles.sectionHeader}>
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>{t('filter_menu_label')}</Text>
+                <Text style={[styles.sectionHint, { color: colors.textMuted }]}>
+                  {t('shown_count', { count: tasks.length })}
+                </Text>
+              </View>
 
-            <View style={[styles.sortPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-              <View style={styles.sortTopRow}>
-                <Text style={[styles.sortTitle, { color: colors.text }]}>{t('sort')}</Text>
-                <Pressable onPress={toggleSortDirection} hitSlop={8}>
-                  <Text style={[styles.directionText, { color: colors.primary }]}>
-                    {getDirectionLabel(sortMode, sortDirection, t)}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ expanded: isFilterOpen }}
+                onPress={() => setIsFilterOpen((current) => !current)}
+                style={[styles.filterTrigger, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              >
+                <View style={styles.filterTriggerText}>
+                  <Text style={[styles.filterTriggerLabel, { color: colors.textMuted }]}>
+                    {t('filter_by_status')}
                   </Text>
-                </Pressable>
-              </View>
-              <View style={styles.sortRow}>
-                {sortOptions.map((option) => {
-                  const selected = sortMode === option.value;
-                  return (
-                    <Pressable
-                      key={option.value}
-                      accessibilityRole="button"
-                      accessibilityState={{ selected }}
-                      onPress={() => setSortMode(option.value)}
-                      style={[styles.sortButton, { backgroundColor: selected ? colors.accent : colors.surfaceMuted }]}
-                    >
-                      <Text style={[styles.sortLabel, { color: selected ? '#fff' : colors.text }]}>{option.label}</Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+                  <Text style={[styles.filterTriggerValue, { color: colors.text }]}>
+                    {activeFilterLabel}
+                  </Text>
+                </View>
+                <Text
+                  style={[
+                    styles.filterChevron,
+                    {
+                      color: colors.primary,
+                      transform: [{ rotate: isFilterOpen ? '180deg' : '0deg' }],
+                    },
+                  ]}
+                >
+                  ˅
+                </Text>
+              </Pressable>
+
+              {isFilterOpen ? (
+                <Animated.View
+                  style={[
+                    styles.dropdownMenu,
+                    dropdownStyle,
+                    { backgroundColor: colors.surface, borderColor: colors.border },
+                  ]}
+                >
+                  {filterOptions.map((option) => {
+                    const selected = taskFilter === option.value;
+
+                    return (
+                      <Pressable
+                        key={option.value}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected }}
+                        onPress={() => {
+                          setTaskFilter(option.value);
+                          setIsFilterOpen(false);
+                        }}
+                        style={[
+                          styles.dropdownOption,
+                          {
+                            backgroundColor: selected ? colors.surfaceMuted : 'transparent',
+                          },
+                        ]}
+                      >
+                        <Text style={[styles.dropdownLabel, { color: colors.text }]}>{option.label}</Text>
+                        <View
+                          style={[
+                            styles.countBubble,
+                            { backgroundColor: selected ? colors.primary : colors.surfaceMuted },
+                          ]}
+                        >
+                          <Text
+                            style={[styles.countText, { color: selected ? '#fff' : colors.textMuted }]}
+                          >
+                            {counts[option.value]}
+                          </Text>
+                        </View>
+                      </Pressable>
+                    );
+                  })}
+                </Animated.View>
+              ) : null}
             </View>
           </View>
         }
@@ -160,7 +203,9 @@ export const TaskListScreen = () => {
           <EmptyState
             title={
               rawTasks.length
-                ? t('no_filtered_tasks', { status: filterOptions.find((item) => item.value === statusFilter)?.label ?? '' })
+                ? t('no_filtered_tasks', {
+                    status: filterOptions.find((item) => item.value === taskFilter)?.label ?? '',
+                  })
                 : t('no_tasks_yet')
             }
             subtitle={rawTasks.length ? t('choose_another_status_filter') : t('create_first_task')}
@@ -193,7 +238,9 @@ export const TaskListScreen = () => {
               <View style={[styles.statusRail, { backgroundColor: accentColor }]} />
               <View style={styles.taskBody}>
                 <View style={styles.taskTopRow}>
-                  <Text style={[styles.taskTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+                  <Text style={[styles.taskTitle, { color: colors.text }]} numberOfLines={2}>
+                    {item.title}
+                  </Text>
                   <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
                 </View>
                 <StatusBadge status={item.status} />
@@ -223,26 +270,44 @@ export const TaskListScreen = () => {
                       },
                     ]}
                   />
-                  <Text style={[styles.syncText, { color: colors.textMuted }]}>{getSyncStatusLabel(item.syncStatus, language)}</Text>
+                  <Text style={[styles.syncText, { color: colors.textMuted }]}>
+                    {getSyncStatusLabel(item.syncStatus, language)}
+                  </Text>
                 </View>
               </View>
             </Pressable>
           );
         }}
       />
-    </ScreenContainer>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   listContent: {
-    padding: 16,
+    paddingHorizontal: 16,
+    paddingTop: 10,
     paddingBottom: 36,
     gap: 14,
   },
   headerContent: {
     gap: 16,
     marginBottom: 4,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  screenTitle: {
+    flex: 1,
+    fontSize: 31,
+    fontWeight: '900',
+    letterSpacing: -0.8,
   },
   hero: {
     minHeight: 142,
@@ -270,6 +335,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 5,
   },
+  filterBlock: {
+    gap: 10,
+  },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -284,22 +352,49 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
   },
-  filterRow: {
-    gap: 9,
-    paddingRight: 12,
-  },
-  filterChip: {
-    minHeight: 42,
+  filterTrigger: {
+    minHeight: 64,
     borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 15,
-    paddingLeft: 13,
-    paddingRight: 7,
+    borderRadius: 18,
+    paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    justifyContent: 'space-between',
   },
-  filterLabel: {
-    fontSize: 13,
+  filterTriggerText: {
+    gap: 3,
+  },
+  filterTriggerLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.9,
+  },
+  filterTriggerValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  filterChevron: {
+    fontSize: 24,
+    fontWeight: '700',
+  },
+  dropdownMenu: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
+    padding: 8,
+    gap: 6,
+  },
+  dropdownOption: {
+    minHeight: 48,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  dropdownLabel: {
+    fontSize: 14,
     fontWeight: '800',
   },
   countBubble: {
@@ -313,41 +408,6 @@ const styles = StyleSheet.create({
   countText: {
     fontSize: 11,
     fontWeight: '900',
-  },
-  sortPanel: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: 20,
-    padding: 14,
-    gap: 12,
-  },
-  sortTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  sortTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-  },
-  directionText: {
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  sortRow: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  sortButton: {
-    flex: 1,
-    minHeight: 38,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-  },
-  sortLabel: {
-    fontSize: 12,
-    fontWeight: '800',
   },
   taskCard: {
     minHeight: 220,
@@ -396,9 +456,9 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
   },
   metaValue: {
-    fontSize: 13,
-    lineHeight: 18,
-    fontWeight: '700',
+    fontSize: 14,
+    lineHeight: 20,
+    fontWeight: '600',
   },
   syncRow: {
     flexDirection: 'row',
@@ -406,12 +466,12 @@ const styles = StyleSheet.create({
     gap: 7,
   },
   syncDot: {
-    width: 7,
-    height: 7,
+    width: 8,
+    height: 8,
     borderRadius: 4,
   },
   syncText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
 });

@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useNavigation, useTheme } from '@react-navigation/native';
+import { useTheme } from '@react-navigation/native';
 
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { MapScreen } from '../screens/MapScreen';
@@ -27,25 +27,9 @@ export type TabParamList = {
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
-const HeaderAddButton = () => {
-  const navigation = useNavigation();
-  const theme = useTheme();
-  const { t } = useTranslation();
-
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={t('add_task')}
-      onPress={() => navigation.navigate('TaskForm' as never)}
-      style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.primary, opacity: pressed ? 0.8 : 1 }]}
-    >
-      <Text style={styles.addButtonText}>{t('add_task')}</Text>
-    </Pressable>
-  );
-};
-
 const TasksTabScreen = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   return (
     <Tab.Navigator
@@ -68,20 +52,23 @@ const TasksTabScreen = () => {
       component={TaskListScreen}
       options={{
         tabBarLabel: t('tab_tasks'),
-        title: t('tab_tasks'),
-        headerRight: () => <HeaderAddButton />,
+        headerShown: false,
       }}
     />
-    <Tab.Screen name="Map" component={MapScreen} options={{ tabBarLabel: t('tab_map'), title: t('tab_map') }} />
+    <Tab.Screen
+      name="Map"
+      component={MapScreen}
+      options={{ tabBarLabel: t('tab_map'), title: t('tab_map'), headerStyle: { backgroundColor: theme.colors.background } }}
+    />
     <Tab.Screen
       name="History"
       component={HistoryScreen}
-      options={{ tabBarLabel: t('tab_history'), title: t('tab_history') }}
+      options={{ tabBarLabel: t('tab_history'), title: t('tab_history'), headerStyle: { backgroundColor: theme.colors.background } }}
     />
     <Tab.Screen
       name="Settings"
       component={SettingsScreen}
-      options={{ tabBarLabel: t('tab_settings'), title: t('tab_settings') }}
+      options={{ tabBarLabel: t('tab_settings'), title: t('tab_settings'), headerStyle: { backgroundColor: theme.colors.background } }}
     />
   </Tab.Navigator>
   );
@@ -89,9 +76,10 @@ const TasksTabScreen = () => {
 
 export const AppNavigator = () => {
   const { t } = useTranslation();
+  const theme = useTheme();
 
   return (
-    <Stack.Navigator screenOptions={{ headerTitleAlign: 'left', headerShadowVisible: false, headerTitleStyle: styles.headerTitle }}>
+    <Stack.Navigator screenOptions={{ headerTitleAlign: 'left', headerShadowVisible: false, headerTitleStyle: styles.headerTitle, headerStyle: { backgroundColor: theme.colors.background } }}>
       <Stack.Screen name="Tabs" component={TasksTabScreen} options={{ headerShown: false }} />
       <Stack.Screen
         name="TaskForm"
@@ -106,18 +94,6 @@ export const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  addButton: {
-    minHeight: 38,
-    justifyContent: 'center',
-    borderRadius: 14,
-    paddingHorizontal: 14,
-    marginRight: 12,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-  },
   headerTitle: {
     fontSize: 24,
     fontWeight: '900',

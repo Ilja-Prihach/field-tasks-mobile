@@ -43,13 +43,15 @@ export const SettingsScreen = () => {
       </SectionCard>
 
       <SectionCard title={t('notifications')}>
-        <View style={styles.row}>
-          <Text style={{ color: colors.text }}>{t('demo_mode_45')}</Text>
-          <Switch value={notificationDemoMode} onValueChange={setNotificationDemoMode} />
+        <View style={styles.settingBlock}>
+          <View style={styles.settingHeader}>
+            <Text style={[styles.rowText, { color: colors.text }]}>{t('demo_mode_45')}</Text>
+            <Switch value={notificationDemoMode} onValueChange={setNotificationDemoMode} />
+          </View>
+          <Text style={{ color: colors.textMuted }}>
+            {t('notifications_fallback_help')}
+          </Text>
         </View>
-        <Text style={{ color: colors.textMuted }}>
-          {t('notifications_fallback_help')}
-        </Text>
       </SectionCard>
 
       <SectionCard title={t('sync')}>
@@ -121,6 +123,21 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 16,
+  },
+  rowText: {
+    flex: 1,
+    fontSize: 15,
+    lineHeight: 21,
+    paddingRight: 6,
+  },
+  settingBlock: {
+    gap: 10,
+  },
+  settingHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 12,
   },
   aboutTitle: {
     fontSize: 18,

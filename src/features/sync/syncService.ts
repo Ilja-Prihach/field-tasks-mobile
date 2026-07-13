@@ -36,7 +36,9 @@ const addSyncHistoryEntry = (
 
   useAppStore.getState().addHistoryItem({
     taskId: change.taskId,
+    taskTitle: change.payload?.title,
     actionType,
+    actor: 'system',
     description,
   });
 };

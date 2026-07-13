@@ -13,11 +13,18 @@ export const HistoryScreen = () => {
   const colors = useThemeColors();
   const { language, t } = useTranslation();
   const history = useAppStore((state) => state.history);
+  const tasks = useAppStore((state) => state.tasks);
+  const visibleHistory = history.filter(
+    (item) =>
+      item.actionType !== 'sync_started' &&
+      item.actionType !== 'synced' &&
+      item.actionType !== 'sync_failed',
+  );
 
   return (
     <ScreenContainer>
       <FlatList
-        data={history}
+        data={visibleHistory}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
@@ -28,9 +35,11 @@ export const HistoryScreen = () => {
         renderItem={({ item }) => (
           <SectionCard>
             <Text style={[styles.action, { color: colors.text }]}>{getHistoryActionLabel(item.actionType, language)}</Text>
+            <Text style={[styles.taskTitle, { color: colors.text }]}>
+              {item.taskTitle ?? tasks.find((task) => task.id === item.taskId)?.title ?? '—'}
+            </Text>
             <Text style={{ color: colors.textMuted }}>{item.description}</Text>
             <Text style={{ color: colors.textMuted }}>{formatDateTime(item.timestamp)}</Text>
-            {item.taskId ? <Text style={{ color: colors.textMuted }}>{t('task_label')}: {item.taskId}</Text> : null}
           </SectionCard>
         )}
       />
@@ -50,5 +59,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     textTransform: 'capitalize',
+  },
+  taskTitle: {
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

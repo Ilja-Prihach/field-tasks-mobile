@@ -149,6 +149,12 @@ export const TaskMap = ({ tasks, onTaskPress, interactive = true, style }: Props
       <MapView
         style={style}
         pointerEvents={interactive ? 'auto' : 'none'}
+        scrollEnabled={interactive}
+        zoomEnabled={interactive}
+        rotateEnabled={interactive}
+        pitchEnabled={interactive}
+        moveOnMarkerPress={false}
+        toolbarEnabled={false}
         initialRegion={{
           latitude: firstTask.location.latitude,
           longitude: firstTask.location.longitude,
