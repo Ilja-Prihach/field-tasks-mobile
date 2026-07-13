@@ -21,7 +21,7 @@ export const FormField = ({ label, error, multiline, ...props }: Props) => {
           styles.input,
           multiline && styles.multiline,
           {
-            backgroundColor: colors.surface,
+            backgroundColor: colors.surfaceMuted,
             borderColor: error ? colors.danger : colors.border,
             color: colors.text,
           },
@@ -35,21 +35,22 @@ export const FormField = ({ label, error, multiline, ...props }: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 6,
+    gap: 7,
   },
   label: {
     fontSize: 13,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   input: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    minHeight: 52,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 16,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    fontSize: 15,
   },
   multiline: {
-    minHeight: 96,
+    minHeight: 112,
     textAlignVertical: 'top',
   },
   error: {

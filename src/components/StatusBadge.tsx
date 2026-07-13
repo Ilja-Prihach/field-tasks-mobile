@@ -7,7 +7,7 @@ import { getStatusLabel } from '../utils/task';
 export const StatusBadge = ({ status }: { status: TaskStatus }) => {
   const colors = useThemeColors();
 
-  const backgroundColor =
+  const statusColor =
     status === 'completed'
       ? colors.success
       : status === 'cancelled'
@@ -17,8 +17,9 @@ export const StatusBadge = ({ status }: { status: TaskStatus }) => {
           : colors.primary;
 
   return (
-    <View style={[styles.badge, { backgroundColor }]}>
-      <Text style={styles.text}>{getStatusLabel(status)}</Text>
+    <View style={[styles.badge, { backgroundColor: `${statusColor}20` }]}>
+      <View style={[styles.dot, { backgroundColor: statusColor }]} />
+      <Text style={[styles.text, { color: statusColor }]}>{getStatusLabel(status)}</Text>
     </View>
   );
 };
@@ -29,10 +30,17 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 10,
     paddingVertical: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  dot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   text: {
-    color: '#fff',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '800',
   },
 });

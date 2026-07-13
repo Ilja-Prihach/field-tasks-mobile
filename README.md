@@ -153,9 +153,9 @@ Only one process should listen on port `3001`. If Android reports an HTML respon
 
 ### Map / Location
 
-- No geocoding is used.
-- The user enters a manual address and can use preset coordinates for stable map placement.
-- Preset locations are available to speed up testing and ensure visible map markers.
+- Manual address input is required; coordinates are resolved only after an explicit map search or quick-location selection.
+- The form can search Russian or English city/street addresses through the free OpenStreetMap Nominatim service. A city-only query resolves to its center; failed searches show a validation error instead of silently using stale coordinates.
+- Minsk, Riga and Warsaw presets are available to speed up testing and provide a predictable fallback when geocoding is unavailable.
 - Coordinates are kept internal for map placement; normal task screens focus on address and map preview instead of raw latitude/longitude.
 - iOS renders markers with `react-native-maps` and MapKit. Android renders the OpenStreetMap-based CARTO basemap with an in-app marker overlay because native Google Maps requires an external API key, which this assignment intentionally avoids.
 
@@ -203,7 +203,7 @@ npm run typecheck
 
 ## Known Limitations
 
-- Coordinates are entered manually because external geocoding is intentionally not used.
+- Dynamic address search requires internet access and depends on the public Nominatim service. Minsk, Riga and Warsaw remain available as deterministic fallback locations.
 - Android map tiles require an internet connection, while tasks, addresses and marker coordinates remain available offline.
 - Sync is intentionally simple and optimized for assignment scope, not for multi-user collaboration.
 - Attachment files rely on local device URIs; if the underlying file is removed by the OS/user, the app handles the missing preview gracefully but cannot restore the asset.

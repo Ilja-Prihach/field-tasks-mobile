@@ -23,7 +23,8 @@ export const PrimaryButton = ({ label, onPress, variant = 'primary', disabled = 
         styles.button,
         {
           backgroundColor,
-          opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
+          opacity: disabled ? 0.45 : 1,
+          transform: [{ scale: pressed ? 0.985 : 1 }],
         },
       ]}
     >
@@ -34,14 +35,15 @@ export const PrimaryButton = ({ label, onPress, variant = 'primary', disabled = 
 
 const styles = StyleSheet.create({
   button: {
-    minHeight: 46,
+    minHeight: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 12,
-    paddingHorizontal: 16,
+    borderRadius: 16,
+    paddingHorizontal: 18,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.1,
   },
 });

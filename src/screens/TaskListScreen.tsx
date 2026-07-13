@@ -1,20 +1,30 @@
-import { useMemo } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 
+import { RootStackParamList } from '../app/AppNavigator';
 import { EmptyState } from '../components/EmptyState';
 import { ScreenContainer } from '../components/ScreenContainer';
-import { SectionCard } from '../components/SectionCard';
 import { StatusBadge } from '../components/StatusBadge';
-import { RootStackParamList } from '../app/AppNavigator';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
+import { TaskStatus } from '../types/task';
 import { formatDateTime } from '../utils/date';
 import { getSyncStatusLabel, getTaskShortLocation, sortTasks } from '../utils/task';
 
+type StatusFilter = 'all' | TaskStatus;
+
+const filterOptions: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'new', label: 'New' },
+  { value: 'in_progress', label: 'In progress' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
+
 const sortOptions = [
-  { value: 'createdAt', label: 'Date added' },
+  { value: 'createdAt', label: 'Added' },
   { value: 'dueDate', label: 'Deadline' },
   { value: 'status', label: 'Status' },
 ] as const;
@@ -24,151 +34,371 @@ const getDirectionLabel = (sortMode: (typeof sortOptions)[number]['value'], dire
     return direction === 'asc' ? 'Oldest first' : 'Newest first';
   }
   if (sortMode === 'dueDate') {
-    return direction === 'asc' ? 'Soonest first' : 'Latest first';
+    return direction === 'asc' ? 'Due soon' : 'Due later';
   }
-  return direction === 'asc' ? 'New to Cancelled' : 'Cancelled to New';
+  return direction === 'asc' ? 'New first' : 'Cancelled first';
 };
 
 export const TaskListScreen = () => {
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const colors = useThemeColors();
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const rawTasks = useAppStore((state) => state.tasks);
   const sortMode = useAppStore((state) => state.sortMode);
   const sortDirection = useAppStore((state) => state.sortDirection);
   const setSortMode = useAppStore((state) => state.setSortMode);
   const toggleSortDirection = useAppStore((state) => state.toggleSortDirection);
-  const tasks = useMemo(
-    () => sortTasks(rawTasks, sortMode, sortDirection),
-    [rawTasks, sortDirection, sortMode],
+  const counts = useMemo(
+    () => ({
+      all: rawTasks.length,
+      new: rawTasks.filter((task) => task.status === 'new').length,
+      in_progress: rawTasks.filter((task) => task.status === 'in_progress').length,
+      completed: rawTasks.filter((task) => task.status === 'completed').length,
+      cancelled: rawTasks.filter((task) => task.status === 'cancelled').length,
+    }),
+    [rawTasks],
   );
+  const tasks = useMemo(() => {
+    const filtered = statusFilter === 'all' ? rawTasks : rawTasks.filter((task) => task.status === statusFilter);
+    return sortTasks(filtered, sortMode, sortDirection);
+  }, [rawTasks, sortDirection, sortMode, statusFilter]);
+  const activeCount = counts.new + counts.in_progress;
 
   return (
     <ScreenContainer>
-      <View style={styles.container}>
-        <SectionCard title="Sort tasks">
-          <View style={styles.sortRow}>
-            {sortOptions.map((option) => (
-              <Pressable
-                key={option.value}
-                accessibilityRole="button"
-                accessibilityState={{ selected: sortMode === option.value }}
-                onPress={() => setSortMode(option.value)}
-                style={[
-                  styles.sortButton,
-                  {
-                    backgroundColor: sortMode === option.value ? colors.primary : colors.surfaceMuted,
-                  },
-                ]}
-              >
-                <Text style={{ color: sortMode === option.value ? '#fff' : colors.text, fontWeight: '700' }}>
-                  {option.label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            onPress={toggleSortDirection}
-            style={[styles.directionButton, { borderColor: colors.border }]}
-          >
-            <Text style={{ color: colors.textMuted }}>Order</Text>
-            <Text style={[styles.directionLabel, { color: colors.text }]}>
-              {getDirectionLabel(sortMode, sortDirection)} - Change
-            </Text>
-          </Pressable>
-        </SectionCard>
+      <FlatList
+        data={tasks}
+        keyExtractor={(item) => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={
+          <View style={styles.headerContent}>
+            <View style={[styles.hero, { backgroundColor: colors.accent }]}>
+              <Text style={styles.eyebrow}>FIELD OVERVIEW</Text>
+              <Text style={styles.heroTitle}>{activeCount} active task{activeCount === 1 ? '' : 's'}</Text>
+              <Text style={styles.heroSubtitle}>
+                {counts.in_progress} in progress · {counts.completed} completed
+              </Text>
+            </View>
 
-        <FlatList
-          data={tasks}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={
-            <EmptyState
-              title="No tasks yet"
-              subtitle="Create your first field task from the Add button in the header."
-            />
-          }
-          renderItem={({ item }) => (
-            <Pressable onPress={() => navigation.navigate('TaskDetails', { taskId: item.id })}>
-              <SectionCard>
-                <View style={styles.itemHeader}>
-                  <Text style={[styles.title, { color: colors.text }]}>{item.title}</Text>
-                  <StatusBadge status={item.status} />
+            <View style={styles.sectionHeader}>
+              <Text style={[styles.sectionTitle, { color: colors.text }]}>Filter by status</Text>
+              <Text style={[styles.sectionHint, { color: colors.textMuted }]}>{tasks.length} shown</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterRow}
+            >
+              {filterOptions.map((option) => {
+                const selected = statusFilter === option.value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected }}
+                    onPress={() => setStatusFilter(option.value)}
+                    style={[
+                      styles.filterChip,
+                      {
+                        backgroundColor: selected ? colors.text : colors.surface,
+                        borderColor: selected ? colors.text : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.filterLabel, { color: selected ? colors.background : colors.text }]}>
+                      {option.label}
+                    </Text>
+                    <View style={[styles.countBubble, { backgroundColor: selected ? colors.primary : colors.surfaceMuted }]}>
+                      <Text style={[styles.countText, { color: selected ? '#fff' : colors.textMuted }]}>
+                        {counts[option.value]}
+                      </Text>
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+
+            <View style={[styles.sortPanel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+              <View style={styles.sortTopRow}>
+                <Text style={[styles.sortTitle, { color: colors.text }]}>Sort</Text>
+                <Pressable onPress={toggleSortDirection} hitSlop={8}>
+                  <Text style={[styles.directionText, { color: colors.primary }]}>
+                    {getDirectionLabel(sortMode, sortDirection)}
+                  </Text>
+                </Pressable>
+              </View>
+              <View style={styles.sortRow}>
+                {sortOptions.map((option) => {
+                  const selected = sortMode === option.value;
+                  return (
+                    <Pressable
+                      key={option.value}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      onPress={() => setSortMode(option.value)}
+                      style={[styles.sortButton, { backgroundColor: selected ? colors.accent : colors.surfaceMuted }]}
+                    >
+                      <Text style={[styles.sortLabel, { color: selected ? '#fff' : colors.text }]}>{option.label}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+        }
+        ListEmptyComponent={
+          <EmptyState
+            title={rawTasks.length ? `No ${filterOptions.find((item) => item.value === statusFilter)?.label} tasks` : 'No tasks yet'}
+            subtitle={rawTasks.length ? 'Choose another status filter.' : 'Create the first field task from the button above.'}
+          />
+        }
+        renderItem={({ item }) => {
+          const accentColor =
+            item.status === 'completed'
+              ? colors.success
+              : item.status === 'cancelled'
+                ? colors.danger
+                : item.status === 'in_progress'
+                  ? colors.warning
+                  : colors.accent;
+
+          return (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${item.title}, ${item.status}, ${formatDateTime(item.dueDate)}`}
+              onPress={() => navigation.navigate('TaskDetails', { taskId: item.id })}
+              style={({ pressed }) => [
+                styles.taskCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  opacity: pressed ? 0.78 : 1,
+                },
+              ]}
+            >
+              <View style={[styles.statusRail, { backgroundColor: accentColor }]} />
+              <View style={styles.taskBody}>
+                <View style={styles.taskTopRow}>
+                  <Text style={[styles.taskTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+                  <Text style={[styles.chevron, { color: colors.textMuted }]}>›</Text>
                 </View>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>{formatDateTime(item.dueDate)}</Text>
-                <Text style={[styles.meta, { color: colors.textMuted }]}>
-                  {getTaskShortLocation(item.location.address)}
-                </Text>
-                <Text
-                  style={[
-                    styles.syncText,
-                    {
-                      color:
-                        item.syncStatus === 'failed'
-                          ? colors.danger
-                          : item.syncStatus === 'pending'
-                            ? colors.warning
-                            : colors.success,
-                    },
-                  ]}
-                >
-                  {getSyncStatusLabel(item.syncStatus)}
-                </Text>
-              </SectionCard>
+                <StatusBadge status={item.status} />
+                <View style={[styles.metaGrid, { borderTopColor: colors.border }]}>
+                  <View style={styles.metaBlock}>
+                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>DEADLINE</Text>
+                    <Text style={[styles.metaValue, { color: colors.text }]}>{formatDateTime(item.dueDate)}</Text>
+                  </View>
+                  <View style={styles.metaBlock}>
+                    <Text style={[styles.metaLabel, { color: colors.textMuted }]}>LOCATION</Text>
+                    <Text style={[styles.metaValue, { color: colors.text }]} numberOfLines={2}>
+                      {getTaskShortLocation(item.location.address)}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.syncRow}>
+                  <View
+                    style={[
+                      styles.syncDot,
+                      {
+                        backgroundColor:
+                          item.syncStatus === 'synced'
+                            ? colors.success
+                            : item.syncStatus === 'failed'
+                              ? colors.danger
+                              : colors.warning,
+                      },
+                    ]}
+                  />
+                  <Text style={[styles.syncText, { color: colors.textMuted }]}>{getSyncStatusLabel(item.syncStatus)}</Text>
+                </View>
+              </View>
             </Pressable>
-          )}
-        />
-      </View>
+          );
+        }}
+      />
     </ScreenContainer>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  listContent: {
     padding: 16,
+    paddingBottom: 36,
+    gap: 14,
+  },
+  headerContent: {
     gap: 16,
+    marginBottom: 4,
   },
-  sortRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  hero: {
+    minHeight: 142,
+    borderRadius: 26,
+    padding: 22,
+    justifyContent: 'flex-end',
+    overflow: 'hidden',
   },
-  sortButton: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  eyebrow: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
-  directionButton: {
-    minHeight: 46,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+  heroTitle: {
+    color: '#fff',
+    fontSize: 29,
+    fontWeight: '900',
+    letterSpacing: -0.8,
+    marginTop: 8,
+  },
+  heroSubtitle: {
+    color: 'rgba(255,255,255,0.76)',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 5,
+  },
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    gap: 12,
   },
-  directionLabel: {
+  sectionTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
+  sectionHint: {
+    fontSize: 12,
     fontWeight: '700',
   },
-  listContent: {
-    gap: 12,
-    paddingBottom: 32,
+  filterRow: {
+    gap: 9,
+    paddingRight: 12,
   },
-  itemHeader: {
+  filterChip: {
+    minHeight: 42,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 15,
+    paddingLeft: 13,
+    paddingRight: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  title: {
-    fontSize: 16,
+  filterLabel: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  countBubble: {
+    minWidth: 28,
+    height: 28,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  countText: {
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  sortPanel: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 20,
+    padding: 14,
+    gap: 12,
+  },
+  sortTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  sortTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+  },
+  directionText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  sortRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  sortButton: {
+    flex: 1,
+    minHeight: 38,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  sortLabel: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  taskCard: {
+    minHeight: 220,
+    flexDirection: 'row',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 22,
+    overflow: 'hidden',
+  },
+  statusRail: {
+    width: 6,
+  },
+  taskBody: {
+    flex: 1,
+    padding: 18,
+    gap: 12,
+  },
+  taskTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+  },
+  taskTitle: {
+    flex: 1,
+    fontSize: 20,
+    lineHeight: 25,
+    fontWeight: '900',
+    letterSpacing: -0.4,
+  },
+  chevron: {
+    fontSize: 28,
+    lineHeight: 28,
+  },
+  metaGrid: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 13,
+    flexDirection: 'row',
+    gap: 18,
+  },
+  metaBlock: {
+    flex: 1,
+    gap: 4,
+  },
+  metaLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  metaValue: {
+    fontSize: 13,
+    lineHeight: 18,
     fontWeight: '700',
   },
-  meta: {
-    fontSize: 13,
+  syncRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+  },
+  syncDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
   },
   syncText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

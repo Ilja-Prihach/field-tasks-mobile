@@ -12,6 +12,8 @@ import { FormField } from '../components/FormField';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { RootStackParamList } from '../app/AppNavigator';
+import { TaskMap } from '../features/location/TaskMap';
+import { geocodeAddress } from '../features/location/geocodingService';
 import {
   cancelTaskNotification,
   requestNotificationPermission,
@@ -20,7 +22,7 @@ import {
 import { LOCATION_PRESETS } from '../features/location/presets';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
-import { TaskAttachment, TaskStatus } from '../types/task';
+import { Task, TaskAttachment, TaskStatus } from '../types/task';
 import {
   formatDateOnly,
   formatDateOnlyFromDate,
@@ -28,6 +30,7 @@ import {
   formatTimeOnlyFromDate,
 } from '../utils/date';
 import { createId } from '../utils/id';
+import { getStatusLabel } from '../utils/task';
 
 const formSchema = z.object({
   title: z.string().trim().min(1, 'Title is required'),
@@ -88,7 +91,9 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
   const [pickerMode, setPickerMode] = useState<'date' | 'time' | null>(null);
-  const [showLocationPresets, setShowLocationPresets] = useState(false);
+  const [isLocationResolved, setIsLocationResolved] = useState(Boolean(task));
+  const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+  const [resolvedLocationName, setResolvedLocationName] = useState(task?.location.address ?? '');
 
   const defaultDueDate = useMemo(
     () => (task ? new Date(task.dueDate) : new Date(Date.now() + 2 * 60 * 60 * 1000)),
@@ -113,6 +118,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     control,
     formState: { errors, isSubmitting },
     handleSubmit,
+    clearErrors,
     setError,
     setValue,
     watch,
@@ -123,14 +129,28 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
 
   const watchedDate = watch('dueDate');
   const watchedTime = watch('dueTime');
+  const watchedAddress = watch('address');
   const watchedLatitude = watch('latitude');
   const watchedLongitude = watch('longitude');
   const pickerValue = parseFormDateTime(watchedDate, watchedTime, defaultDueDate);
-  const selectedLocationPreset = LOCATION_PRESETS.find(
-    (preset) =>
-      preset.latitude === Number(watchedLatitude) &&
-      preset.longitude === Number(watchedLongitude),
-  );
+  const locationPreviewTask: Task | null = isLocationResolved
+    ? {
+        id: 'location-preview',
+        title: watchedAddress.trim() || 'Task location',
+        description: '',
+        dueDate: defaultDueDate.toISOString(),
+        status: 'new',
+        location: {
+          address: watchedAddress.trim(),
+          latitude: Number(watchedLatitude),
+          longitude: Number(watchedLongitude),
+        },
+        attachments: [],
+        createdAt: defaultDueDate.toISOString(),
+        updatedAt: defaultDueDate.toISOString(),
+        syncStatus: 'pending',
+      }
+    : null;
 
   const buildDueDate = (values: FormValues) => {
     return parseFormDateTime(values.dueDate, values.dueTime, defaultDueDate).toISOString();
@@ -187,7 +207,43 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
     }
   };
 
+  const handleLocationSearch = async () => {
+    const address = watchedAddress.trim();
+    if (!address) {
+      setError('address', { message: 'Enter a city or full address first.' });
+      return;
+    }
+
+    setIsSearchingLocation(true);
+    clearErrors('address');
+    try {
+      const result = await geocodeAddress(address);
+      if (!result) {
+        setIsLocationResolved(false);
+        setError('address', { message: 'Address not found. Check the spelling or add more details.' });
+        return;
+      }
+
+      setValue('latitude', String(result.latitude), { shouldValidate: true });
+      setValue('longitude', String(result.longitude), { shouldValidate: true });
+      setResolvedLocationName(result.displayName);
+      setIsLocationResolved(true);
+    } catch (error) {
+      setIsLocationResolved(false);
+      setError('address', {
+        message: error instanceof Error ? error.message : 'Address search is unavailable. Try a quick location.',
+      });
+    } finally {
+      setIsSearchingLocation(false);
+    }
+  };
+
   const onSubmit = handleSubmit(async (values) => {
+    if (!isLocationResolved) {
+      setError('address', { message: 'Search this address on the map or choose a quick location.' });
+      return;
+    }
+
     const dueDate = buildDueDate(values);
     if (new Date(dueDate).getTime() <= Date.now()) {
       setError('dueDate', { message: 'Deadline must be in the future' });
@@ -297,53 +353,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       </SectionCard>
 
       <SectionCard title="Location">
-        <Text style={[styles.fieldLabel, { color: colors.text }]}>Map location</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: showLocationPresets }}
-          onPress={() => setShowLocationPresets((current) => !current)}
-          style={[
-            styles.locationSelect,
-            { backgroundColor: colors.surface, borderColor: colors.border },
-          ]}
-        >
-          <View style={styles.locationSelectText}>
-            <Text style={[styles.locationSelectTitle, { color: colors.text }]}>
-              {selectedLocationPreset?.label ?? 'Choose a preset'}
-            </Text>
-            <Text style={{ color: colors.textMuted }} numberOfLines={1}>
-              {selectedLocationPreset?.address ?? 'Used only to place the marker'}
-            </Text>
-          </View>
-          <Text style={{ color: colors.textMuted }}>{showLocationPresets ? 'Close' : 'Choose'}</Text>
-        </Pressable>
-        {showLocationPresets ? (
-          <View style={[styles.locationMenu, { borderColor: colors.border }]}>
-            {LOCATION_PRESETS.map((preset) => {
-              const isSelected = selectedLocationPreset?.id === preset.id;
-              return (
-                <Pressable
-                  key={preset.id}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: isSelected }}
-                  onPress={() => {
-                    setValue('address', preset.address, { shouldValidate: true });
-                    setValue('latitude', String(preset.latitude), { shouldValidate: true });
-                    setValue('longitude', String(preset.longitude), { shouldValidate: true });
-                    setShowLocationPresets(false);
-                  }}
-                  style={[
-                    styles.locationOption,
-                    { backgroundColor: isSelected ? colors.surfaceMuted : colors.surface },
-                  ]}
-                >
-                  <Text style={[styles.locationSelectTitle, { color: colors.text }]}>{preset.label}</Text>
-                  <Text style={{ color: colors.textMuted }}>{preset.address}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
+        <Text style={[styles.locationIntro, { color: colors.textMuted }]}>Search any city or street in Russian or English.</Text>
         <Controller
           control={control}
           name="address"
@@ -351,15 +361,60 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
             <FormField
               label="Address"
               value={value}
-              onChangeText={onChange}
+              onChangeText={(nextAddress) => {
+                onChange(nextAddress);
+                setIsLocationResolved(false);
+                setResolvedLocationName('');
+              }}
               error={errors.address?.message}
-              placeholder="Manual address"
+              placeholder="City or full address"
             />
           )}
         />
-        <Text style={[styles.helperText, { color: colors.textMuted }]}>
-          Enter the address shown to users. The preset controls marker placement because external geocoding is not used.
-        </Text>
+        <PrimaryButton
+          label={isSearchingLocation ? 'Searching address...' : 'Search on map'}
+          onPress={() => void handleLocationSearch()}
+          disabled={isSearchingLocation}
+        />
+        <View style={styles.quickLocationBlock}>
+          <Text style={[styles.quickLocationLabel, { color: colors.textMuted }]}>QUICK LOCATIONS</Text>
+          <View style={styles.quickLocationRow}>
+            {LOCATION_PRESETS.map((preset) => (
+              <Pressable
+                key={preset.id}
+                accessibilityRole="button"
+                onPress={() => {
+                  setValue('address', preset.address, { shouldValidate: true });
+                  setValue('latitude', String(preset.latitude), { shouldValidate: true });
+                  setValue('longitude', String(preset.longitude), { shouldValidate: true });
+                  setResolvedLocationName(preset.address);
+                  setIsLocationResolved(true);
+                  clearErrors('address');
+                }}
+                style={[styles.quickLocationChip, { backgroundColor: colors.surfaceMuted }]}
+              >
+                <Text style={[styles.quickLocationText, { color: colors.text }]}>{preset.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        {isLocationResolved ? (
+          <View style={[styles.locationResult, { backgroundColor: `${colors.success}16` }]}>
+            <View style={[styles.locationResultDot, { backgroundColor: colors.success }]} />
+            <View style={styles.locationResultText}>
+              <Text style={[styles.locationResultTitle, { color: colors.success }]}>Location found</Text>
+              <Text style={{ color: colors.textMuted }} numberOfLines={2}>{resolvedLocationName}</Text>
+            </View>
+          </View>
+        ) : null}
+        {locationPreviewTask ? (
+          <TaskMap
+            key={`${watchedLatitude}-${watchedLongitude}`}
+            tasks={[locationPreviewTask]}
+            interactive={false}
+            style={styles.locationPreview}
+          />
+        ) : null}
       </SectionCard>
 
       <SectionCard title="Status">
@@ -379,7 +434,9 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                     },
                   ]}
                 >
-                  <Text style={{ color: value === status ? '#fff' : colors.text }}>{status}</Text>
+                  <Text style={[styles.statusText, { color: value === status ? '#fff' : colors.text }]}>
+                    {getStatusLabel(status)}
+                  </Text>
                 </Pressable>
               ))}
             </View>
@@ -421,38 +478,58 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
   },
-  fieldLabel: {
+  locationIntro: {
     fontSize: 13,
-    fontWeight: '600',
+    lineHeight: 19,
   },
-  locationSelect: {
-    minHeight: 58,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 9,
+  quickLocationBlock: {
+    gap: 9,
+  },
+  quickLocationLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
+  quickLocationRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  quickLocationChip: {
+    flex: 1,
+    minHeight: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+  },
+  quickLocationText: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  locationResult: {
+    minHeight: 62,
+    borderRadius: 16,
+    padding: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
-  locationSelectText: {
+  locationResultDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  locationResultText: {
     flex: 1,
     gap: 3,
   },
-  locationSelectTitle: {
-    fontWeight: '700',
+  locationResultTitle: {
+    fontSize: 12,
+    fontWeight: '900',
   },
-  locationMenu: {
-    borderWidth: 1,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  locationOption: {
-    minHeight: 58,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    gap: 3,
+  locationPreview: {
+    width: '100%',
+    height: 190,
   },
   statusRow: {
     flexDirection: 'row',
@@ -463,6 +540,10 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     paddingHorizontal: 12,
     paddingVertical: 10,
+  },
+  statusText: {
+    fontSize: 12,
+    fontWeight: '800',
   },
   attachmentsGrid: {
     flexDirection: 'row',

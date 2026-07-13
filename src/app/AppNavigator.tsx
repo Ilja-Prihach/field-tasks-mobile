@@ -1,4 +1,4 @@
-import { Pressable, Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useNavigation, useTheme } from '@react-navigation/native';
@@ -31,14 +31,33 @@ const HeaderAddButton = () => {
   const theme = useTheme();
 
   return (
-    <Pressable onPress={() => navigation.navigate('TaskForm' as never)} style={{ paddingHorizontal: 12 }}>
-      <Text style={{ color: theme.colors.primary, fontWeight: '700' }}>Add</Text>
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel="Add task"
+      onPress={() => navigation.navigate('TaskForm' as never)}
+      style={({ pressed }) => [styles.addButton, { backgroundColor: theme.colors.primary, opacity: pressed ? 0.8 : 1 }]}
+    >
+      <Text style={styles.addButtonText}>Add task</Text>
     </Pressable>
   );
 };
 
 const TasksTabScreen = () => (
-  <Tab.Navigator screenOptions={{ headerTitleAlign: 'center' }}>
+  <Tab.Navigator
+    screenOptions={({ route }) => ({
+      headerTitleAlign: 'left',
+      headerShadowVisible: false,
+      headerTitleStyle: styles.headerTitle,
+      tabBarActiveTintColor: '#E45D3B',
+      tabBarStyle: styles.tabBar,
+      tabBarLabelStyle: styles.tabLabel,
+      tabBarIcon: ({ color, focused }) => (
+        <View style={[styles.tabIcon, { backgroundColor: focused ? `${color}20` : 'transparent' }]}>
+          <Text style={[styles.tabIconText, { color }]}>{route.name.slice(0, 1)}</Text>
+        </View>
+      ),
+    })}
+  >
     <Tab.Screen
       name="Tasks"
       component={TaskListScreen}
@@ -54,7 +73,7 @@ const TasksTabScreen = () => (
 );
 
 export const AppNavigator = () => (
-  <Stack.Navigator screenOptions={{ headerTitleAlign: 'center' }}>
+  <Stack.Navigator screenOptions={{ headerTitleAlign: 'left', headerShadowVisible: false, headerTitleStyle: styles.headerTitle }}>
     <Stack.Screen name="Tabs" component={TasksTabScreen} options={{ headerShown: false }} />
     <Stack.Screen
       name="TaskForm"
@@ -66,3 +85,44 @@ export const AppNavigator = () => (
     <Stack.Screen name="TaskDetails" component={TaskDetailsScreen} options={{ title: 'Task Details' }} />
   </Stack.Navigator>
 );
+
+const styles = StyleSheet.create({
+  addButton: {
+    minHeight: 38,
+    justifyContent: 'center',
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    marginRight: 12,
+  },
+  addButtonText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  headerTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+  },
+  tabBar: {
+    height: 76,
+    paddingTop: 7,
+    paddingBottom: 9,
+    borderTopWidth: 0,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  tabIcon: {
+    width: 30,
+    height: 26,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconText: {
+    fontSize: 13,
+    fontWeight: '900',
+  },
+});

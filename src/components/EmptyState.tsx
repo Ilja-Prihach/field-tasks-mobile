@@ -15,15 +15,15 @@ export const EmptyState = ({ title, subtitle }: { title: string; subtitle: strin
 
 const styles = StyleSheet.create({
   container: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 22,
+    padding: 28,
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
   },
   title: {
-    fontSize: 17,
-    fontWeight: '700',
+    fontSize: 19,
+    fontWeight: '800',
   },
   subtitle: {
     fontSize: 14,

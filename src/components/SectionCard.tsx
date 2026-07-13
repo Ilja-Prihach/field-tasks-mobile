@@ -20,13 +20,19 @@ export const SectionCard = ({ children, title }: Props) => {
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: 1,
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 22,
+    padding: 18,
+    gap: 14,
+    shadowColor: '#10211F',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    elevation: 2,
   },
   title: {
-    fontSize: 16,
-    fontWeight: '700',
+    fontSize: 17,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
 });
