@@ -65,6 +65,11 @@ export type TaskPayload = {
   attachments: TaskAttachment[];
 };
 
+export type NotificationScheduleResult = {
+  notificationId: string;
+  warning: string | null;
+};
+
 export type AppSettings = {
   themeMode: ThemeMode;
   notificationDemoMode: boolean;

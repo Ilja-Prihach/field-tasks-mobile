@@ -112,8 +112,8 @@ DELETE /tasks/:id
 ### Notifications
 
 - Reminder target is 30 minutes before task deadline.
-- If the deadline is already too close, the app schedules a fallback reminder instead of silently failing.
-- Demo mode in Settings uses a 45-second reminder flow for video verification.
+- If the deadline is already too close, the app schedules a 60-second fallback reminder instead of silently failing.
+- Demo mode in Settings force-schedules the same reminder flow in 45 seconds for video verification, regardless of the actual due time.
 
 ### Map / Location
 

@@ -1,6 +1,6 @@
 import * as Notifications from 'expo-notifications';
 
-import { Task } from '../../types/task';
+import { NotificationScheduleResult, Task } from '../../types/task';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,6 +20,15 @@ export const requestNotificationPermission = async () => {
   return Notifications.requestPermissionsAsync();
 };
 
+export const configureNotificationChannel = async () => {
+  await Notifications.setNotificationChannelAsync('task-reminders', {
+    name: 'Task reminders',
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 250, 250, 250],
+    lightColor: '#1463FF',
+  });
+};
+
 export const cancelTaskNotification = async (notificationId?: string | null) => {
   if (!notificationId) {
     return;
@@ -28,16 +37,27 @@ export const cancelTaskNotification = async (notificationId?: string | null) => 
   await Notifications.cancelScheduledNotificationAsync(notificationId);
 };
 
-export const scheduleTaskNotification = async (task: Task, demoMode: boolean) => {
-  const dueTime = new Date(task.dueDate).getTime();
-  const fallbackSeconds = demoMode ? 45 : 60;
-  const scheduledFor = dueTime - 30 * 60 * 1000;
-  const warning =
-    scheduledFor <= Date.now()
-      ? `Due time is too close. Notification was scheduled in ${fallbackSeconds} seconds instead.`
-      : null;
+export const scheduleTaskNotification = async (
+  task: Task,
+  demoMode: boolean,
+): Promise<NotificationScheduleResult | null> => {
+  if (task.status === 'completed' || task.status === 'cancelled') {
+    return null;
+  }
 
-  const seconds = warning ? fallbackSeconds : Math.max(1, Math.floor((scheduledFor - Date.now()) / 1000));
+  const dueTime = new Date(task.dueDate).getTime();
+  const scheduledFor = dueTime - 30 * 60 * 1000;
+  const shouldUseFallback = scheduledFor <= Date.now();
+  const warning = demoMode
+    ? 'Demo mode is enabled. Notification was scheduled in 45 seconds.'
+    : shouldUseFallback
+      ? 'Due time is too close. Notification was scheduled in 60 seconds instead.'
+      : null;
+  const seconds = demoMode
+    ? 45
+    : shouldUseFallback
+      ? 60
+      : Math.max(1, Math.floor((scheduledFor - Date.now()) / 1000));
 
   const notificationId = await Notifications.scheduleNotificationAsync({
     content: {
@@ -46,10 +66,12 @@ export const scheduleTaskNotification = async (task: Task, demoMode: boolean) =>
         hour: '2-digit',
         minute: '2-digit',
       })}`,
+      sound: true,
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       seconds,
+      channelId: 'task-reminders',
     },
   });
 

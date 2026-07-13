@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNetInfo } from '@react-native-community/netinfo';
 
+import { configureNotificationChannel } from '../features/notifications/notificationService';
 import { syncPendingChanges } from '../features/sync/syncService';
 import { useAppStore } from '../storage/useAppStore';
 
@@ -11,6 +12,10 @@ export const useAppBootstrap = () => {
   useEffect(() => {
     setOnlineStatus(Boolean(netInfo.isConnected));
   }, [netInfo.isConnected, setOnlineStatus]);
+
+  useEffect(() => {
+    void configureNotificationChannel();
+  }, []);
 
   useEffect(() => {
     if (netInfo.isConnected) {

@@ -12,7 +12,11 @@ import { FormField } from '../components/FormField';
 import { ScreenContainer } from '../components/ScreenContainer';
 import { SectionCard } from '../components/SectionCard';
 import { RootStackParamList } from '../app/AppNavigator';
-import { requestNotificationPermission, scheduleTaskNotification } from '../features/notifications/notificationService';
+import {
+  cancelTaskNotification,
+  requestNotificationPermission,
+  scheduleTaskNotification,
+} from '../features/notifications/notificationService';
 import { LOCATION_PRESETS } from '../features/location/presets';
 import { useAppStore } from '../storage/useAppStore';
 import { useThemeColors } from '../theme/useThemeColors';
@@ -190,9 +194,10 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
       }
 
       if (permission.granted) {
+        await cancelTaskNotification(task?.notificationId);
         const result = await scheduleTaskNotification(savedTask, notificationDemoMode);
-        setTaskNotification(savedTask.id, result.notificationId);
-        if (result.warning) {
+        setTaskNotification(savedTask.id, result?.notificationId ?? null);
+        if (result?.warning) {
           Alert.alert('Reminder adjusted', result.warning);
         }
       }

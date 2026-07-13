@@ -159,6 +159,15 @@ export const useAppStore = create<AppState>()(
               actionType: 'updated',
               description: `Task "${nextTask.title}" was updated.`,
             },
+            ...(current.status !== nextTask.status
+              ? [
+                  {
+                    taskId,
+                    actionType: 'status_changed' as const,
+                    description: `Status changed to "${nextTask.status}".`,
+                  },
+                ]
+              : []),
             ...(attachmentDiff > 0
               ? [
                   {

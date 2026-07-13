@@ -1,4 +1,5 @@
 import { Alert, Image, Linking, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
 import { InfoRow } from '../components/InfoRow';
@@ -16,6 +17,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'TaskDetails'>;
 
 export const TaskDetailsScreen = ({ navigation, route }: Props) => {
   const colors = useThemeColors();
+  const [brokenPreviewIds, setBrokenPreviewIds] = useState<string[]>([]);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
   const task = useAppStore((state) => state.tasks.find((item) => item.id === route.params.taskId));
   const history = useAppStore((state) => state.history.filter((item) => item.taskId === route.params.taskId));
@@ -42,8 +44,8 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
     try {
       await cancelTaskNotification(task.notificationId);
       const result = await scheduleTaskNotification(updated, notificationDemoMode);
-      setTaskNotification(task.id, result.notificationId);
-      if (result.warning) {
+      setTaskNotification(task.id, result?.notificationId ?? null);
+      if (result?.warning) {
         Alert.alert('Reminder adjusted', result.warning);
       }
     } catch (error) {
@@ -98,11 +100,23 @@ export const TaskDetailsScreen = ({ navigation, route }: Props) => {
           <View style={styles.attachmentsGrid}>
             {task.attachments.map((attachment) => (
               <View key={attachment.id} style={styles.attachmentItem}>
-                <Image
-                  source={{ uri: attachment.uri }}
-                  style={styles.attachmentImage}
-                  onError={() => undefined}
-                />
+                {brokenPreviewIds.includes(attachment.id) ? (
+                  <View style={[styles.attachmentFallback, { backgroundColor: colors.surfaceMuted }]}>
+                    <Text style={[styles.attachmentFallbackText, { color: colors.textMuted }]}>
+                      Preview unavailable
+                    </Text>
+                  </View>
+                ) : (
+                  <Image
+                    source={{ uri: attachment.uri }}
+                    style={styles.attachmentImage}
+                    onError={() =>
+                      setBrokenPreviewIds((current) =>
+                        current.includes(attachment.id) ? current : [...current, attachment.id],
+                      )
+                    }
+                  />
+                )}
                 <Text
                   style={[styles.attachmentName, { color: colors.textMuted }]}
                   numberOfLines={1}
@@ -157,6 +171,18 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 12,
+  },
+  attachmentFallback: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 8,
+  },
+  attachmentFallbackText: {
+    fontSize: 11,
+    textAlign: 'center',
   },
   attachmentName: {
     fontSize: 11,
