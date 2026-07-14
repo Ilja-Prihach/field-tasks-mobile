@@ -70,8 +70,10 @@ Install once:
 ```bash
 npm install
 cp .env.example .env
-npx expo prebuild
+cd ios && pod install && cd ..
 ```
+
+The repository already includes tracked `ios/` and `android/` native projects. Do not run `npx expo prebuild` unless you intentionally want to regenerate native files and review the resulting diff.
 
 For simulator development, use three terminals:
 
@@ -108,6 +110,12 @@ For a physical device, point the matching platform variable to your machine LAN 
 ```bash
 EXPO_PUBLIC_API_BASE_URL_ANDROID=http://192.168.0.20:3001
 EXPO_PUBLIC_API_BASE_URL_IOS=http://192.168.0.20:3001
+```
+
+If iOS native dependencies change later, rerun:
+
+```bash
+cd ios && pod install && cd ..
 ```
 
 ## Mock Server
@@ -193,7 +201,6 @@ android/app/build/outputs/apk/debug/app-debug.apk
 Build this file before running `adb install`; otherwise ADB will report that the APK was not found. For a standalone review build that does not depend on Metro:
 
 ```bash
-npx expo prebuild -p android
 cd android
 NODE_ENV=production ./gradlew app:assembleRelease
 ```
