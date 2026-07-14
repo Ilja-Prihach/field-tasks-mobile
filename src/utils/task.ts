@@ -1,4 +1,13 @@
-import { HistoryActionType, LanguageCode, SortDirection, SortMode, SyncStatus, Task, TaskStatus } from '../types/task';
+import {
+  HistoryActionType,
+  LanguageCode,
+  SortDirection,
+  SortMode,
+  SyncStatus,
+  Task,
+  TaskHistoryItem,
+  TaskStatus,
+} from '../types/task';
 import {
   getHistoryActionTranslationKey,
   getStatusTranslationKey,
@@ -56,3 +65,35 @@ export const getSyncStatusLabel = (status: SyncStatus, language: LanguageCode) =
 
 export const getHistoryActionLabel = (actionType: HistoryActionType, language: LanguageCode) =>
   translate(language, getHistoryActionTranslationKey(actionType));
+
+const hiddenHistoryActions: HistoryActionType[] = ['sync_started', 'synced', 'sync_failed'];
+
+export type HistoryFilter = 'all' | Exclude<HistoryActionType, 'sync_started' | 'synced' | 'sync_failed'>;
+
+export const getVisibleHistoryItems = (
+  history: TaskHistoryItem[],
+  tasks: Task[],
+  searchQuery: string,
+  filter: HistoryFilter,
+) => {
+  const normalizedQuery = searchQuery.trim().toLocaleLowerCase();
+
+  return history.filter((item) => {
+    if (hiddenHistoryActions.includes(item.actionType)) {
+      return false;
+    }
+
+    if (filter !== 'all' && item.actionType !== filter) {
+      return false;
+    }
+
+    if (!normalizedQuery) {
+      return true;
+    }
+
+    const taskTitle = item.taskTitle ?? tasks.find((task) => task.id === item.taskId)?.title ?? '';
+    const haystack = `${taskTitle} ${item.description} ${item.actorName ?? ''}`.toLocaleLowerCase();
+
+    return haystack.includes(normalizedQuery);
+  });
+};
