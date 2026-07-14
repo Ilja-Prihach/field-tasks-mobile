@@ -81,6 +81,7 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
   const setTaskNotification = useAppStore((state) => state.setTaskNotification);
   const notificationDemoMode = useAppStore((state) => state.settings.notificationDemoMode);
   const currentUserId = useAppStore((state) => state.settings.currentUserId);
+  const themeMode = useAppStore((state) => state.settings.themeMode);
   const task = useMemo(() => tasks.find((item) => item.id === taskId), [taskId, tasks]);
 
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
@@ -395,6 +396,8 @@ export const TaskFormScreen = ({ navigation, route }: Props) => {
                 value={pickerValue}
                 is24Hour
                 minimumDate={pickerMode === 'date' ? new Date() : undefined}
+                textColor={colors.text}
+                themeVariant={themeMode === 'dark' ? 'dark' : 'light'}
                 onValueChange={handleDateChange}
               />
             ) : null}
