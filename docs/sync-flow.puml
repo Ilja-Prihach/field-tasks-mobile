@@ -1,0 +1,43 @@
+@startuml
+title Offline Sync Flow
+
+skinparam shadowing false
+
+actor User
+participant "Task UI" as UI
+participant "useAppStore" as Store
+participant "syncService" as Sync
+participant "json-server" as API
+
+User -> UI: Create / edit / delete task
+UI -> Store: Apply local mutation
+Store -> Store: Persist task + history + pendingChanges
+Store -> Sync: Trigger sync attempt
+
+alt Offline
+  Sync -> Sync: Mark task as pending
+  Sync -> Store: Keep pending change
+else Online
+  alt New local task
+    Sync -> API: POST /tasks
+    API --> Sync: 201 + server id
+  else Existing task
+    Sync -> API: PUT /tasks/:id
+    API --> Sync: 200
+  else Delete task
+    Sync -> API: DELETE /tasks/:id
+    API --> Sync: 200 / 404 treated as synced
+  end
+
+  alt Request succeeded
+    Sync -> Store: syncStatus = synced
+    Sync -> Store: Remove pending change
+    Sync -> Store: Add concise sync history
+  else Request failed
+    Sync -> Store: syncStatus = failed
+    Sync -> Store: Keep pending change
+    Sync -> Store: Deduplicate repeated sync_failed history
+  end
+end
+
+@enduml

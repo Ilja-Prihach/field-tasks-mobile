@@ -1,0 +1,77 @@
+@startuml
+title Field Tasks MVP - Architecture Overview
+
+top to bottom direction
+
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam packageStyle rectangle
+skinparam nodesep 28
+skinparam ranksep 42
+
+package "1. Screens" {
+  [Task Screens] as Screens
+  note right of Screens
+  TaskListScreen
+  TaskFormScreen
+  TaskDetailsScreen
+  MapScreen
+  HistoryScreen
+  SettingsScreen
+  end note
+}
+
+package "2. Shared UI" {
+  [UI Components] as Components
+  [Theme + i18n] as SharedUi
+}
+
+package "3. State" {
+  [Zustand Store] as Store
+}
+
+package "4. Feature Services" {
+  [Sync Service] as Sync
+  [Notification Service] as Notifications
+  [Location Service] as Location
+  [Map Renderer] as Map
+  [Mock Users] as Users
+}
+
+package "5. External / Persistence" {
+  [AsyncStorage] as Storage
+  [json-server /tasks] as Api
+  [expo-notifications] as ExpoNotifications
+  [expo-image-picker] as ImagePicker
+  [NetInfo] as NetInfo
+  [Nominatim] as Nominatim
+}
+
+Screens --> Components
+Components --> SharedUi
+Screens --> Store
+
+Screens --> Notifications : schedule reminders
+Screens --> Location : resolve address
+Screens --> Map : preview markers
+Screens --> ImagePicker : pick attachments
+Screens --> Users : select actor / assignee
+Screens --> Sync : manual sync
+
+Store --> Storage
+
+Sync --> Store
+Sync --> Api
+Sync --> NetInfo
+
+Notifications --> ExpoNotifications
+Location --> Nominatim
+Map --> Store
+Users --> Store
+
+note bottom of Store
+Persists tasks, history,
+pendingChanges and settings.
+end note
+
+@enduml

@@ -1,0 +1,37 @@
+@startuml
+title Task Lifecycle
+
+skinparam shadowing false
+
+start
+:Open Task Form;
+:Enter title, description,\ndeadline, address and assignee;
+
+if (Validation passed?) then (yes)
+  :Resolve location;
+  :Create or update task in Zustand store;
+  :Persist local state to AsyncStorage;
+  :Add history event\n(created / updated / status_changed / assignment_changed);
+  :Queue pending sync change;
+  :Schedule local reminder;
+
+  if (Network available?) then (yes)
+    :syncService tries to push change;
+    if (Server accepted?) then (yes)
+      :syncStatus = synced;
+      :Remove pending change;
+    else (no)
+      :syncStatus = failed;
+      :Keep pending change for retry;
+    endif
+  else (no)
+    :syncStatus = pending;
+  endif
+
+  :Task visible in list,\ndetails, history and map;
+else (no)
+  :Show validation errors to user;
+endif
+
+stop
+@enduml

@@ -36,6 +36,11 @@ Expo + React Native + TypeScript MVP for the SalesAutomators RN test task. The a
 ## Project Structure
 
 ```text
+docs/
+  architecture.puml
+  task-lifecycle.puml
+  sync-flow.puml
+
 src/
   app/
   screens/
@@ -51,6 +56,12 @@ src/
   utils/
   types/
 ```
+
+## Architecture Diagrams
+
+- [docs/architecture.puml](docs/architecture.puml) - high-level module and dependency overview.
+- [docs/task-lifecycle.puml](docs/task-lifecycle.puml) - how task creation/update flows through validation, persistence, notifications and sync.
+- [docs/sync-flow.puml](docs/sync-flow.puml) - offline-first sync rules and server interaction.
 
 ## Install And Run
 
@@ -199,6 +210,7 @@ If you prefer a cloud build, `eas build -p android` is also possible, but it req
 
 ```bash
 npm run typecheck
+npm test -- --runInBand
 ```
 
 ## Known Limitations
@@ -208,7 +220,7 @@ npm run typecheck
 - Sync is intentionally simple and optimized for assignment scope, not for multi-user collaboration.
 - Attachment files rely on local device URIs; if the underlying file is removed by the OS/user, the app handles the missing preview gracefully but cannot restore the asset.
 - Local notification scheduling is implemented on both platforms, but exact delivery timing is controlled by the operating system and should be verified with the 45-second demo mode in a development or release build.
-- No automated tests were added in this MVP to keep focus on required runtime functionality.
+- Test coverage is intentionally focused on critical logic paths: store mutations, task form validation, sync behavior and notification scheduling.
 
 ## Video Demo Checklist
 
