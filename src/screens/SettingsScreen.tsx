@@ -117,8 +117,8 @@ export const SettingsScreen = () => {
       </SectionCard>
 
       <SectionCard title={t('about')}>
-        <Text style={[styles.aboutTitle, { color: colors.text }]}>{t('field_tasks_mvp')}</Text>
-        <Text style={{ color: colors.textMuted }}>{t('candidate_code')}: SA-RN-4827</Text>
+        <Text style={[styles.aboutTitle, { color: colors.text }]}>{t('app_name')}</Text>
+        <Text style={{ color: colors.textMuted }}>{t('portfolio_tagline')}</Text>
         <Text style={{ color: colors.textMuted }}>
           {t('about_description')}
         </Text>

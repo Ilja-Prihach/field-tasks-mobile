@@ -34,7 +34,7 @@ export const geocodeAddress = async (address: string): Promise<GeocodedLocation 
         headers: {
           Accept: 'application/json',
           'Accept-Language': 'ru,en;q=0.8',
-          'User-Agent': 'FieldTasksMVP-SA-RN-4827/1.0',
+          'User-Agent': 'FieldFlow/1.0 (github.com/Ilja-Prihach/field-tasks-mobile)',
         },
       },
     );

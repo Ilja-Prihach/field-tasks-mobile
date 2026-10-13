@@ -87,9 +87,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.ilya_prihach.fieldtasksmvpsarn4827'
+    namespace 'com.ilyaprihach.fieldflow'
     defaultConfig {
-        applicationId 'com.ilya_prihach.fieldtasksmvpsarn4827'
+        applicationId 'com.ilyaprihach.fieldflow'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

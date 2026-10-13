@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Field Tasks MVP",
-    "slug": "field-tasks-mvp-sa-rn-4827",
-    "scheme": "fieldtasksmvp",
+    "name": "FieldFlow",
+    "slug": "fieldflow",
+    "scheme": "fieldflow",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.ilya-prihach.fieldtasksmvpsarn4827"
+      "bundleIdentifier": "com.ilyaprihach.fieldflow"
     },
     "android": {
       "adaptiveIcon": {
@@ -19,7 +19,7 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.ilya_prihach.fieldtasksmvpsarn4827"
+      "package": "com.ilyaprihach.fieldflow"
     },
     "web": {
       "favicon": "./assets/favicon.png"
