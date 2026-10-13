@@ -1,230 +1,224 @@
-# Field Tasks MVP
+<div align="center">
 
-Candidate code: `SA-RN-4827`
+# FieldFlow
 
-Expo + React Native + TypeScript MVP for the SalesAutomators RN test task. The app is built for stable Android review and covers task CRUD, validation, offline persistence, local history, local notifications, map markers, theme switching and mock sync with `json-server`.
+### Offline-first mobile task management for field teams
 
-## Main Features
+Create, assign, track, and synchronize field tasks across Android and iOS—even when the network is unavailable.
 
-- Create and edit tasks with required title, description, due date/time, address, status and optional image attachments.
-- Keep the location flow simple for the reviewer: manual address entry plus preset map coordinates, without exposing raw coordinates in the normal UI.
-- Validate forms with `react-hook-form` + `zod` and show visible user-facing errors.
-- View task list with empty state, sorting by `createdAt`, `dueDate`, `status` and task sync status.
-- Open task details with full data, attachment preview, location, history, status updates and delete action.
-- Assign tasks to one of three mock users, switch the active user in Settings and keep the acting user's name in task history.
-- Persist tasks, sync queue, history and theme locally with `AsyncStorage`.
-- Work offline for create/edit/delete/view and sync changes later when connectivity returns.
-- Schedule local notifications 30 minutes before deadline with fallback scheduling and 45-second demo mode.
-- Show tasks on a map using manual coordinates, without paid APIs or external geocoding.
-- Toggle light/dark theme in Settings and view About info with candidate code.
+[![Expo](https://img.shields.io/badge/Expo-57-000020?logo=expo&logoColor=white)](https://expo.dev/)
+[![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react&logoColor=black)](https://reactnative.dev/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-6-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Zustand](https://img.shields.io/badge/State-Zustand-443E38)](https://zustand.docs.pmnd.rs/)
+[![Tests](https://img.shields.io/badge/Tests-18_passing-2E7D32)](#quality)
 
-## Stack
+[Features](#features) · [Architecture](#architecture) · [Getting started](#getting-started) · [Roadmap](#roadmap)
 
-- Expo SDK 57
-- React Native 0.86
-- TypeScript
-- React Navigation
-- Zustand
-- AsyncStorage
-- React Hook Form + Zod
-- expo-image-picker
-- expo-notifications
-- @react-native-community/netinfo
-- react-native-maps
-- json-server
+</div>
 
-## Project Structure
+## About
+
+FieldFlow is a cross-platform operations app for teams working away from a desk. It keeps tasks, assignments, deadlines, locations, attachments, reminders, and audit history available locally, then synchronizes pending changes when connectivity returns.
+
+The project focuses on the parts of mobile development that are easy to overlook in a simple CRUD demo: offline persistence, deterministic sync behavior, local notifications, device-aware API configuration, native maps, validation, and testable business logic.
+
+## Features
+
+- Create and edit tasks with title, description, deadline, address, status, assignee, and image attachments
+- Work offline across create, update, delete, view, and history flows
+- Persist tasks, settings, history, and the sync queue with AsyncStorage
+- Synchronize queued operations automatically after network restoration
+- Pull remote changes manually even when the local queue is empty
+- Preserve stable local IDs while mapping records to server-generated IDs
+- Assign tasks to team members and record the acting user in audit history
+- Search and filter task history by task or event type
+- Sort tasks by creation date, deadline, status, or synchronization state
+- Schedule local deadline reminders with fallback timing
+- Preview task locations on native maps
+- Search addresses through OpenStreetMap Nominatim with deterministic location presets
+- Attach images from the device gallery
+- Switch between English and Russian
+- Follow the system theme or use the in-app dark mode control
+
+## Offline-first sync
 
 ```text
-docs/
-  architecture.puml
-  task-lifecycle.puml
-  sync-flow.puml
-
-src/
-  app/
-  screens/
-  components/
-  features/
-    location/
-    notifications/
-    sync/
-    users/
-  storage/
-  api/
-  theme/
-  utils/
-  types/
+User action
+    │
+    ▼
+Zustand store ──► AsyncStorage
+    │                  │
+    ├── task data      ├── survives app restarts
+    ├── audit event    └── remains available offline
+    └── pending change
+            │
+            ▼ when online
+       Sync service ──► REST API / json-server
+            │
+            ├── POST new tasks
+            ├── PUT existing tasks
+            ├── DELETE removed tasks
+            └── merge remote records without overwriting pending local work
 ```
 
-## Architecture Diagrams
+The current conflict strategy is last-write-wins. Repeated failures for the same unchanged operation are deduplicated in history to avoid noisy logs.
 
-- [docs/architecture.puml](docs/architecture.puml) - high-level module and dependency overview.
-- [docs/task-lifecycle.puml](docs/task-lifecycle.puml) - how task creation/update flows through validation, persistence, notifications and sync.
-- [docs/sync-flow.puml](docs/sync-flow.puml) - offline-first sync rules and server interaction.
+## Architecture
 
-## Install And Run
+```text
+src/
+├── app/                  # Navigation and application bootstrap
+├── api/                  # Task API client and platform-aware base URL
+├── components/           # Reusable UI building blocks
+├── features/
+│   ├── location/         # Geocoding and map behavior
+│   ├── notifications/    # Reminder scheduling
+│   ├── sync/             # Offline queue synchronization
+│   └── users/            # Local team member selection
+├── screens/              # Tasks, details, forms, map, history, settings
+├── storage/              # Zustand store and AsyncStorage persistence
+├── theme/                # Theme tokens and color hooks
+├── types/                # Domain contracts
+└── utils/                # Validation, translations, dates, task helpers
+```
 
-Install once:
+Detailed PlantUML diagrams:
+
+- [System architecture](docs/architecture.puml)
+- [Task lifecycle](docs/task-lifecycle.puml)
+- [Synchronization flow](docs/sync-flow.puml)
+
+## Tech stack
+
+| Area | Technology |
+| --- | --- |
+| Mobile | Expo 57, React Native 0.86, React 19 |
+| Language | TypeScript 6 |
+| Navigation | React Navigation |
+| State and persistence | Zustand, AsyncStorage |
+| Forms and validation | React Hook Form, Zod |
+| Native capabilities | Expo Notifications, Expo Image Picker, React Native Maps |
+| Connectivity | NetInfo |
+| Development API | json-server |
+| Testing | Jest, React Native Testing Library |
+
+## Getting started
+
+### Prerequisites
+
+- Node.js 20 or newer
+- npm
+- Android Studio and/or Xcode
+- CocoaPods for iOS development
+
+### Installation
 
 ```bash
+git clone https://github.com/Ilja-Prihach/field-tasks-mobile.git
+cd field-tasks-mobile
 npm install
 cp .env.example .env
-cd ios && pod install && cd ..
 ```
 
-The repository already includes tracked `ios/` and `android/` native projects. Do not run `npx expo prebuild` unless you intentionally want to regenerate native files and review the resulting diff.
+The default simulator configuration is:
 
-For simulator development, use three terminals:
+```dotenv
+EXPO_PUBLIC_API_BASE_URL_ANDROID=http://10.0.2.2:3001
+EXPO_PUBLIC_API_BASE_URL_IOS=http://localhost:3001
+```
+
+Install iOS pods when running the native iOS project for the first time:
 
 ```bash
-# Terminal 1: mock API
+cd ios
+pod install
+cd ..
+```
+
+The native `ios/` and `android/` projects are tracked. Run Expo prebuild only when you intentionally want to regenerate them and review the resulting native diff.
+
+### Run locally
+
+Use separate terminals:
+
+```bash
+# Mock REST API
 npm run server
 
-# Terminal 2: Metro for the native development build
+# Metro bundler
 npx expo start --dev-client -c
 
-# Terminal 3: choose one platform
+# Choose a platform
 npm run android
 npm run ios
 ```
 
-Run only one command from the final two lines at a time. Both simulators can stay installed and connect to the same Metro process.
+For a physical device, replace the relevant API URL with the development machine's LAN address.
 
-For Android emulator, use:
-
-```bash
-EXPO_PUBLIC_API_BASE_URL_ANDROID=http://10.0.2.2:3001
-```
-
-For iOS simulator, use:
+## Useful commands
 
 ```bash
-EXPO_PUBLIC_API_BASE_URL_IOS=http://localhost:3001
+npm run start       # Start Expo
+npm run android     # Run the Android native project
+npm run ios         # Run the iOS native project
+npm run server      # Start json-server on port 3001
+npm run typecheck   # Run TypeScript checks
+npm test            # Run the Jest test suite
 ```
 
-The committed `.env.example` already contains both simulator values. Do not set the shared `EXPO_PUBLIC_API_BASE_URL` for simulator work because Android and iOS require different hostnames.
-
-For a physical device, point the matching platform variable to your machine LAN IP, for example:
-
-```bash
-EXPO_PUBLIC_API_BASE_URL_ANDROID=http://192.168.0.20:3001
-EXPO_PUBLIC_API_BASE_URL_IOS=http://192.168.0.20:3001
-```
-
-If iOS native dependencies change later, rerun:
-
-```bash
-cd ios && pod install && cd ..
-```
-
-## Mock Server
-
-The project uses `json-server` with [data/db.json](data/db.json).
-
-Run it with:
-
-```bash
-npm run server
-```
-
-Default endpoint:
-
-```text
-GET    /tasks
-GET    /tasks/:id
-POST   /tasks
-PUT    /tasks/:id
-DELETE /tasks/:id
-```
-
-Only one process should listen on port `3001`. If Android reports an HTML response instead of JSON, check for a port conflict with `lsof -nP -iTCP:3001 -sTCP:LISTEN`, stop the unrelated process and restart `npm run server`.
-
-## Architecture Notes
-
-### Storage
-
-- Zustand store persists `tasks`, `history`, `pendingChanges`, sorting and settings to `AsyncStorage`.
-- The app remains usable after restart without network.
-- Task history is global and filterable by `taskId` on the details screen.
-- Mock users are local reference data. A task stores creator and assignee snapshots, while each user action stores the actor ID and name so previous history remains stable after switching users.
-
-### Sync
-
-- Offline changes are queued as simple `upsert` or `delete` operations.
-- When online, the app pushes pending changes to `json-server`.
-- Sync resolution is endpoint-based:
-  - new local task -> `POST /tasks`
-  - existing remote task -> `PUT /tasks/:serverId`
-  - delete missing remote task -> treated as already synced
-- `json-server` 1.x generates its own ID on `POST`. The app keeps a stable local task ID for navigation/history and persists the returned server ID for later `PUT` and `DELETE` requests. A `clientId` field reconnects the two sides after restart.
-- Conflict strategy is **last write wins**: the latest local update overwrites older server state.
-- Remote tasks are merged back only when there is no local pending change for the same task.
-- Repeated identical sync errors for the same unchanged pending operation are deduplicated in local history to avoid log spam.
-- Manual sync from Settings shows a compact success/failure summary instead of silently flipping internal flags.
-- Manual sync also pulls remote records even when the local queue is empty; automatic sync runs after hydration, network restoration and every new local mutation.
-
-### Notifications
-
-- Reminder target is 30 minutes before task deadline.
-- If the deadline is already too close, the app schedules a 60-second fallback reminder instead of silently failing.
-- Demo mode in Settings force-schedules the same reminder flow in 45 seconds for video verification, regardless of the actual due time.
-
-### Map / Location
-
-- Manual address input is required; coordinates are resolved only after an explicit map search or quick-location selection.
-- The form can search Russian or English city/street addresses through the free OpenStreetMap Nominatim service. A city-only query resolves to its center; failed searches show a validation error instead of silently using stale coordinates.
-- Minsk, Riga and Warsaw presets are available to speed up testing and provide a predictable fallback when geocoding is unavailable.
-- Coordinates are kept internal for map placement; normal task screens focus on address and map preview instead of raw latitude/longitude.
-- iOS renders markers with `react-native-maps` and MapKit. Android renders the OpenStreetMap-based CARTO basemap with an in-app marker overlay because native Google Maps requires an external API key, which this assignment intentionally avoids.
-
-### State Management
-
-- UI state and business state are kept in one small Zustand store for simplicity.
-- Notification scheduling and mock sync stay in separate service modules.
-
-## Android APK Build
-
-For a debug APK used with the local Metro server:
-
-```bash
-cd android
-./gradlew app:assembleDebug
-```
-
-The verified debug APK output is:
-
-```text
-android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-Build this file before running `adb install`; otherwise ADB will report that the APK was not found. For a standalone review build that does not depend on Metro:
+Build a standalone Android release APK locally:
 
 ```bash
 cd android
 NODE_ENV=production ./gradlew app:assembleRelease
 ```
 
-Expected APK output:
+Expected output:
 
 ```text
 android/app/build/outputs/apk/release/app-release.apk
 ```
 
-If you prefer a cloud build, `eas build -p android` is also possible, but it requires Expo account setup.
+## Quality
 
-## Verification Commands
+The automated suite currently covers the critical business paths:
+
+- store mutations and persisted state behavior
+- task form validation
+- offline queue synchronization
+- task and history utilities
+- notification scheduling
+
+Verification commands:
 
 ```bash
 npm run typecheck
 npm test -- --runInBand
+cd android && ./gradlew app:compileDebugKotlin
 ```
 
-## Known Limitations
+## Roadmap
 
-- Dynamic address search requires internet access and depends on the public Nominatim service. Minsk, Riga and Warsaw remain available as deterministic fallback locations.
-- Android map tiles require an internet connection, while tasks, addresses and marker coordinates remain available offline.
-- Sync is intentionally simple and optimized for assignment scope, not for multi-user collaboration.
-- Attachment files rely on local device URIs; if the underlying file is removed by the OS/user, the app handles the missing preview gracefully but cannot restore the asset.
-- Local notification scheduling is implemented on both platforms, but exact delivery timing is controlled by the operating system and should be verified with the 45-second demo mode in a development or release build.
-- Test coverage is intentionally focused on critical logic paths: store mutations, task form validation, sync behavior and notification scheduling.
+- [ ] Replace the development API with a production backend and authenticated user sessions
+- [ ] Add organization workspaces, roles, and server-managed team members
+- [ ] Introduce version-based conflict detection instead of last-write-wins
+- [ ] Upload attachments to durable object storage
+- [ ] Add remote push notifications and background synchronization
+- [ ] Support recurring tasks and configurable reminder windows
+- [ ] Add manager dashboards and operational analytics
+- [ ] Publish signed Android and iOS preview builds
+- [ ] Expand integration and end-to-end test coverage
+
+## Known limitations
+
+- `json-server` is a development backend and does not provide authentication or multi-user concurrency guarantees.
+- Attachment paths point to files on the local device; removed files cannot be restored automatically.
+- Dynamic address lookup requires network access, while preset locations remain available as a fallback.
+- Android map tiles and iOS MapKit rendering depend on their respective external map services.
+- Exact local notification delivery time remains subject to operating-system scheduling rules.
+
+## Author
+
+Built by [Ilja Prihach](https://github.com/Ilja-Prihach).
+
+[LinkedIn](https://www.linkedin.com/in/ilya-prihach/) · [Telegram](https://t.me/Ilja_prihach)
